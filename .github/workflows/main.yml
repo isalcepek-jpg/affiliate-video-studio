@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Affiliate Video Studio APK
 
 on:
   workflow_dispatch:
@@ -11,36 +11,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract project
+      - name: Show repository files
         run: |
-          unzip -q AffiliateVideoStudio-v1.zip
+          echo "===== CURRENT DIRECTORY ====="
+          pwd
+          echo "===== REPOSITORY FILES ====="
+          find . -maxdepth 3 -type f | sort
 
-          echo "===== ISI HASIL ZIP ====="
-          find . -maxdepth 5 -type f | sort | head -200
-
-          echo "===== MENCARI PROJECT ANDROID ====="
-
-          PROJECT_DIR=""
-
-          if find . -type f -name "gradlew" | grep -q .; then
-            PROJECT_DIR=$(find . -type f -name "gradlew" -print -quit | xargs dirname)
-          elif find . -type f -name "settings.gradle" | grep -q .; then
-            PROJECT_DIR=$(find . -type f -name "settings.gradle" -print -quit | xargs dirname)
-          elif find . -type f -name "settings.gradle.kts" | grep -q .; then
-            PROJECT_DIR=$(find . -type f -name "settings.gradle.kts" -print -quit | xargs dirname)
-          fi
-
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Project Android Gradle tidak ditemukan."
-            echo "Isi ZIP di atas adalah isi sebenarnya yang perlu kita periksa."
+      - name: Check web app
+        run: |
+          if [ ! -f "AffiliateVideoStudio/index.html" ]; then
+            echo "ERROR: AffiliateVideoStudio/index.html tidak ditemukan."
             exit 1
           fi
 
-          echo "Project ditemukan: $PROJECT_DIR"
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Web app ditemukan:"
+          ls -la AffiliateVideoStudio
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -48,22 +42,35 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build APK
+      - name: Create Capacitor project
         run: |
-          cd "$PROJECT_DIR"
+          npm init -y
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
 
-          if [ -f "./gradlew" ]; then
-            chmod +x ./gradlew
-            ./gradlew assembleDebug --no-daemon
-          else
-            gradle assembleDebug --no-daemon
-          fi
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.isalcepek.affiliatevideostudio",
+            "appName": "Affiliate Video Studio",
+            "webDir": "AffiliateVideoStudio"
+          }
+          EOF
+
+      - name: Add Android platform
+        run: |
+          npx cap add android
+
+      - name: Sync web app
+        run: |
+          npx cap sync android
+
+      - name: Build Android APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: AffiliateVideoStudio-debug
-          path: "**/app/build/outputs/apk/debug/app-debug.apk"
+          path: android/app/build/outputs/apk/debug/app-debug.apk
