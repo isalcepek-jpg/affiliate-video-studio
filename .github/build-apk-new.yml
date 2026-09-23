@@ -1,7 +1,10 @@
-name: Build Android APK
+name: Build Affiliate Video Studio APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -11,59 +14,77 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Extract V2
+        run: |
+          set -e
+
+          echo "===== ZIP FILE ====="
+          ls -lh *.zip
+
+          unzip -q AffiliateVideoStudio-screenshot-language-v2.zip
+
+          echo "===== EXTRACTED FILES ====="
+          find . -maxdepth 5 -type f | sort | head -300
+
+      - name: Find web app
+        run: |
+          set -e
+
+          INDEX=$(find . -type f -name "index.html" -not -path "./.git/*" | head -1)
+
+          if [ -z "$INDEX" ]; then
+            echo "ERROR: index.html tidak ditemukan."
+            exit 1
+          fi
+
+          WEB_DIR=$(dirname "$INDEX")
+
+          echo "index.html ditemukan: $INDEX"
+          echo "WEB_DIR=$WEB_DIR" >> "$GITHUB_ENV"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Find and extract ZIP
+      - name: Create Capacitor project
         run: |
-          set -e
+          npm init -y
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
 
-          ZIP_FILE=$(find . -maxdepth 1 -type f -iname "*.zip" | head -n 1)
+          cat > capacitor.config.json <<EOF
+          {
+            "appId": "com.isalcepek.affiliatevideostudio",
+            "appName": "Affiliate Video Studio",
+            "webDir": "${WEB_DIR}"
+          }
+          EOF
 
-          if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP project tidak ditemukan."
-            exit 1
-          fi
+          echo "===== CAPACITOR CONFIG ====="
+          cat capacitor.config.json
 
-          echo "ZIP ditemukan: $ZIP_FILE"
-
-          mkdir -p android-project
-          unzip -q "$ZIP_FILE" -d android-project
-
-          echo "Isi hasil extract:"
-          find android-project -maxdepth 3 -type f | head -100
-
-      - name: Find Android Gradle project
+      - name: Add Android platform
         run: |
-          set -e
+          npx cap add android
 
-          PROJECT_DIR=$(find android-project -type f -name "settings.gradle" -o -name "settings.gradle.kts" | head -n 1 | xargs -r dirname)
-
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Project Android Gradle tidak ditemukan."
-            echo "Struktur ZIP:"
-            find android-project -maxdepth 5 -type f
-            exit 1
-          fi
-
-          echo "Project Android ditemukan di: $PROJECT_DIR"
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-      - name: Make Gradle executable
+      - name: Sync web app
         run: |
-          chmod +x "$PROJECT_DIR/gradlew"
+          npx cap sync android
 
       - name: Build APK
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: android
         run: |
-          ./gradlew assembleDebug
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: AffiliateVideoStudio-debug
-          path: |
-            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/**/*.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
