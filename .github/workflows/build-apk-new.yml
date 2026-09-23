@@ -15,7 +15,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -29,13 +28,15 @@ jobs:
 
           npm init -y
           npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
           cat > capacitor.config.js <<'EOF'
-module.exports = {
-  appId: 'com.isalcepek.affiliatevideostudio',
-  appName: 'Affiliate Video Studio',
-  webDir: 'AffiliateVideoStudio'
-};
-EOF
+          module.exports = {
+            appId: 'com.isalcepek.affiliatevideostudio',
+            appName: 'Affiliate Video Studio',
+            webDir: 'AffiliateVideoStudio'
+          };
+          EOF
+
       - name: Add Android platform
         run: |
           npx cap add android
