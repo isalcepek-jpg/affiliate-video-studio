@@ -28,8 +28,7 @@ jobs:
           set -e
 
           npm init -y
-
-          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 typescript
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
           cat > capacitor.config.js <<'EOF'
 module.exports = {
   appId: 'com.isalcepek.affiliatevideostudio',
