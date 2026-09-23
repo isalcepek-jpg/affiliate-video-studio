@@ -17,16 +17,29 @@ jobs:
       - name: Extract project
         run: |
           unzip -q AffiliateVideoStudio-v1.zip
-          echo "Mencari project Android..."
-          PROJECT_DIR=$(find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -1 | xargs dirname)
+
+          echo "===== ISI HASIL ZIP ====="
+          find . -maxdepth 5 -type f | sort | head -200
+
+          echo "===== MENCARI PROJECT ANDROID ====="
+
+          PROJECT_DIR=""
+
+          if find . -type f -name "gradlew" | grep -q .; then
+            PROJECT_DIR=$(find . -type f -name "gradlew" -print -quit | xargs dirname)
+          elif find . -type f -name "settings.gradle" | grep -q .; then
+            PROJECT_DIR=$(find . -type f -name "settings.gradle" -print -quit | xargs dirname)
+          elif find . -type f -name "settings.gradle.kts" | grep -q .; then
+            PROJECT_DIR=$(find . -type f -name "settings.gradle.kts" -print -quit | xargs dirname)
+          fi
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Project Android tidak ditemukan di dalam ZIP."
-            find . -maxdepth 3 -type f | head -100
+            echo "ERROR: Project Android Gradle tidak ditemukan."
+            echo "Isi ZIP di atas adalah isi sebenarnya yang perlu kita periksa."
             exit 1
           fi
 
-          echo "Project ditemukan di: $PROJECT_DIR"
+          echo "Project ditemukan: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Setup Java
