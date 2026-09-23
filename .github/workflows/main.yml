@@ -17,8 +17,17 @@ jobs:
       - name: Extract project
         run: |
           unzip -q AffiliateVideoStudio-v1.zip
-          ls -la
-          ls -la AffiliateVideoStudioAndroid
+          echo "Mencari project Android..."
+          PROJECT_DIR=$(find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -1 | xargs dirname)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Project Android tidak ditemukan di dalam ZIP."
+            find . -maxdepth 3 -type f | head -100
+            exit 1
+          fi
+
+          echo "Project ditemukan di: $PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -30,12 +39,18 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build APK
-        working-directory: AffiliateVideoStudioAndroid
         run: |
-          gradle assembleDebug --no-daemon
+          cd "$PROJECT_DIR"
+
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleDebug --no-daemon
+          else
+            gradle assembleDebug --no-daemon
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: AffiliateVideoStudio-debug
-          path: AffiliateVideoStudioAndroid/app/build/outputs/apk/debug/app-debug.apk
+          path: "**/app/build/outputs/apk/debug/app-debug.apk"
