@@ -1,58 +1,19 @@
-name: Build Affiliate Video Studio APK
+- name: Create Capacitor project
+  run: |
+    set -e
 
-on:
-  workflow_dispatch:
+    test -f AffiliateVideoStudio/index.html
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    npm init -y
+    npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    cat > capacitor.config.js <<'EOF'
+    module.exports = {
+      appId: 'com.isalcepek.affiliatevideostudio',
+      appName: 'Affiliate Video Studio',
+      webDir: 'AffiliateVideoStudio'
+    };
+    EOF
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Create Capacitor project
-        run: |
-          set -e
-
-          npm init -y
-          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
-
-          cat > capacitor.config.js <<'EOF'
-          module.exports = {
-            appId: 'com.isalcepek.affiliatevideostudio',
-            appName: 'Affiliate Video Studio',
-            webDir: 'AffiliateVideoStudio'
-          };
-          EOF
-
-      - name: Add Android platform
-        run: |
-          npx cap add android
-
-      - name: Sync web app to Android
-        run: |
-          npx cap sync android
-
-      - name: Build debug APK
-        working-directory: android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: AffiliateVideoStudio-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+    echo "=== Web app ==="
+    ls -la AffiliateVideoStudio
