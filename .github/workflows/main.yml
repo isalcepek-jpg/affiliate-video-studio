@@ -14,22 +14,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show repository files
+      - name: Find project files
         run: |
-          echo "===== CURRENT DIRECTORY ====="
-          pwd
-          echo "===== REPOSITORY FILES ====="
-          find . -maxdepth 3 -type f | sort
-
-      - name: Check web app
-        run: |
-          if [ ! -f "AffiliateVideoStudio/index.html" ]; then
-            echo "ERROR: AffiliateVideoStudio/index.html tidak ditemukan."
-            exit 1
-          fi
-
-          echo "Web app ditemukan:"
-          ls -la AffiliateVideoStudio
+          echo "===== FILES IN REPOSITORY ====="
+          find . -maxdepth 5 -type f | sort
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -42,28 +30,52 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Find web app
+        run: |
+          if [ -f "AffiliateVideoStudio/index.html" ]; then
+            echo "Web app ditemukan."
+          else
+            echo "Mencari index.html..."
+            INDEX=$(find . -type f -name "index.html" -not -path "./.git/*" | head -1)
+
+            if [ -z "$INDEX" ]; then
+              echo "ERROR: index.html tidak ditemukan."
+              exit 1
+            fi
+
+            echo "index.html ditemukan di: $INDEX"
+            DIR=$(dirname "$INDEX")
+            echo "WEB_DIR=$DIR" >> "$GITHUB_ENV"
+          fi
+
+      - name: Set default web directory
+        run: |
+          if [ -z "${WEB_DIR:-}" ]; then
+            echo "WEB_DIR=AffiliateVideoStudio" >> "$GITHUB_ENV"
+          fi
+
       - name: Create Capacitor project
         run: |
           npm init -y
           npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
 
-          cat > capacitor.config.json <<'EOF'
+          cat > capacitor.config.json <<EOF
           {
             "appId": "com.isalcepek.affiliatevideostudio",
             "appName": "Affiliate Video Studio",
-            "webDir": "AffiliateVideoStudio"
+            "webDir": "${WEB_DIR}"
           }
           EOF
 
-      - name: Add Android platform
-        run: |
-          npx cap add android
+          cat capacitor.config.json
 
-      - name: Sync web app
-        run: |
-          npx cap sync android
+      - name: Add Android
+        run: npx cap add android
 
-      - name: Build Android APK
+      - name: Sync Android
+        run: npx cap sync android
+
+      - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
