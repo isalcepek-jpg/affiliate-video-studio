@@ -37,7 +37,10 @@ jobs:
             @capacitor/core@7 \
             @capacitor/cli@7 \
             @capacitor/android@7 \
-            @capacitor-community/http
+            npm install \
+              @capacitor/core@7 \
+              @capacitor/cli@7 \
+              @capacitor/android@7
 
           cat > capacitor.config.json <<'EOF'
           {
