@@ -26,14 +26,23 @@ jobs:
           echo "===== EXTRACTED FILES ====="
           find . -maxdepth 5 -type f | sort | head -300
 
-      - name: Find web app
+            - name: Find web app
         run: |
           set -e
 
-          INDEX=$(find . -type f -name "index.html" -not -path "./.git/*" | head -1)
+          echo "===== SEMUA FILE SETELAH ZIP DIEKSTRAK ====="
+          find . -type f -not -path "./.git/*" | sort
+
+          echo "===== MENCARI INDEX.HTML ====="
+          find . -type f -iname "index.html" -not -path "./.git/*" -print
+
+          echo "===== MENCARI FILE ZIP ====="
+          find . -type f -iname "*.zip" -not -path "./.git/*" -print
+
+          INDEX=$(find . -type f -iname "index.html" -not -path "./.git/*" -print -quit)
 
           if [ -z "$INDEX" ]; then
-            echo "ERROR: index.html tidak ditemukan."
+            echo "ERROR: index.html memang tidak ditemukan di hasil ekstraksi."
             exit 1
           fi
 
