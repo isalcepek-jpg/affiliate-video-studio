@@ -43,7 +43,7 @@ jobs:
           {
             "appId": "com.isalcepek.affiliatevideostudio",
             "appName": "Affiliate Video Studio",
-            "webDir": "AffiliateVideoStudio",
+            ""webDir": "web",
             "plugins": {
               "CapacitorHttp": {
                 "enabled": true
