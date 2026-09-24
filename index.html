@@ -135,7 +135,9 @@ textarea{
   font-size:15px
 }
 
-.primary:disabled{opacity:.5}
+.primary:disabled{
+  opacity:.5
+}
 
 .test{
   width:100%;
@@ -149,7 +151,9 @@ textarea{
   margin-top:10px
 }
 
-.test:disabled{opacity:.5}
+.test:disabled{
+  opacity:.5
+}
 
 .status{
   font-size:12px;
@@ -494,9 +498,12 @@ $("photo").addEventListener("change", async event => {
     img = await fileToBase64(file);
 
     $("preview").src = img;
-    $("preview").style.display = "block";
 
-    $("pick").textContent = file.name;
+    $("preview").style.display =
+      "block";
+
+    $("pick").textContent =
+      file.name;
 
     $("status").textContent =
       "✅ Foto siap digunakan.";
@@ -578,7 +585,6 @@ $("testServer").onclick = async () => {
     const http =
       getCapacitorHttp();
 
-
     const response =
       await http.get({
 
@@ -590,7 +596,6 @@ $("testServer").onclick = async () => {
 
       });
 
-
     console.log(
       "TEST HTTP STATUS:",
       response.status
@@ -601,12 +606,10 @@ $("testServer").onclick = async () => {
       response.data
     );
 
-
     const text =
       typeof response.data === "string"
         ? response.data
         : JSON.stringify(response.data);
-
 
     if(
       response.status >= 200 &&
@@ -656,13 +659,17 @@ $("testServer").onclick = async () => {
 async function sendRequest(body){
 
   $("status").textContent =
-    "⏳ Menghubungkan ke server...";
+    "⏳ Mengirim permintaan ke server...";
 
   try{
 
     const http =
       getCapacitorHttp();
 
+    console.log(
+      "POST BODY:",
+      body
+    );
 
     const response =
       await http.post({
@@ -678,21 +685,42 @@ async function sendRequest(body){
 
       });
 
-
     console.log(
-      "HTTP STATUS:",
+      "POST HTTP STATUS:",
       response.status
     );
 
     console.log(
-      "SERVER RESPONSE:",
+      "POST RESPONSE:",
       response.data
     );
-
 
     let data =
       response.data;
 
+    let rawResponse;
+
+    if(typeof data === "string"){
+
+      rawResponse =
+        data;
+
+    }else{
+
+      rawResponse =
+        JSON.stringify(data);
+
+    }
+
+    console.log(
+      "RAW SERVER RESPONSE:",
+      rawResponse
+    );
+
+
+    /*
+     * Ubah respons menjadi JSON
+     */
 
     if(typeof data === "string"){
 
@@ -704,8 +732,10 @@ async function sendRequest(body){
       }catch(error){
 
         throw new Error(
-          "Respons server bukan JSON: " +
-          data.substring(0,300)
+          "HTTP " +
+          response.status +
+          " | Respons server bukan JSON: " +
+          rawResponse.substring(0,500)
         );
 
       }
@@ -713,19 +743,33 @@ async function sendRequest(body){
     }
 
 
+    /*
+     * Periksa respons server
+     */
+
     if(!data || !data.ok){
 
+      const serverError =
+        data && (
+          data.error ||
+          data.message
+        );
+
       throw new Error(
-        (data && data.error) ||
-        (data && data.message) ||
-        "Server gagal."
+        "HTTP " +
+        response.status +
+        " | " +
+        (
+          serverError ||
+          rawResponse ||
+          "Server tidak mengembalikan respons yang benar."
+        )
       );
 
     }
 
 
     return data;
-
 
   }catch(error){
 
@@ -734,10 +778,13 @@ async function sendRequest(body){
       error
     );
 
+    const detail =
+      error && error.message
+        ? error.message
+        : String(error);
 
     throw new Error(
-      error.message ||
-      "Tidak dapat terhubung ke server."
+      detail
     );
 
   }
@@ -773,7 +820,6 @@ async function waitForVideo(operation){
       attempt +
       "/60";
 
-
     const result =
       await sendRequest({
 
@@ -783,7 +829,6 @@ async function waitForVideo(operation){
 
       });
 
-
     if(
       result.done &&
       result.videoUrl
@@ -792,7 +837,6 @@ async function waitForVideo(operation){
       return result.videoUrl;
 
     }
-
 
     if(
       result.done &&
@@ -805,11 +849,9 @@ async function waitForVideo(operation){
 
     }
 
-
     await wait(10000);
 
   }
-
 
   throw new Error(
     "Pembuatan video terlalu lama. Silakan coba lagi."
@@ -831,18 +873,16 @@ $("go").onclick = async () => {
 
   }
 
-
-  $("go").disabled = true;
+  $("go").disabled =
+    true;
 
   $("result").style.display =
     "none";
-
 
   try{
 
     $("status").textContent =
       "⏳ Mengirim foto produk...";
-
 
     const result =
       await sendRequest({
@@ -859,7 +899,6 @@ $("go").onclick = async () => {
 
       });
 
-
     if(!result.operation){
 
       throw new Error(
@@ -868,12 +907,10 @@ $("go").onclick = async () => {
 
     }
 
-
     const videoUrl =
       await waitForVideo(
         result.operation
       );
-
 
     $("vid").src =
       videoUrl;
@@ -887,7 +924,6 @@ $("go").onclick = async () => {
     $("status").textContent =
       "✅ Video berhasil dibuat.";
 
-
     saveHistory({
 
       image:img,
@@ -898,7 +934,6 @@ $("go").onclick = async () => {
         .toLocaleString("id-ID")
 
     });
-
 
   }catch(error){
 
@@ -916,7 +951,6 @@ $("go").onclick = async () => {
       "❌ ERROR: " + detail;
 
   }
-
 
   $("go").disabled =
     false;
@@ -944,7 +978,6 @@ function saveHistory(item){
     history = [];
 
   }
-
 
   history.unshift(item);
 
@@ -977,7 +1010,6 @@ function loadHistory(){
 
   }
 
-
   if(!history.length){
 
     $("hist").innerHTML =
@@ -986,7 +1018,6 @@ function loadHistory(){
     return;
 
   }
-
 
   $("hist").innerHTML =
     history.map(
