@@ -54,8 +54,10 @@ jobs:
           echo "===== CAPACITOR CONFIG ====="
           cat capacitor.config.json
 
-      - name: Add Android platform
-        run: npx cap add android
+            - name: Add Android platform
+        run: |
+          npx cap add android
+          npx cap sync android
 
       - name: Sync web app
         run: npx cap sync android
