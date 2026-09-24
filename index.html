@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="id">
 <head>
@@ -505,103 +504,78 @@ async function sendRequest(body){
 
   try{
 
-    /*console.log("CAPACITOR:", window.Capacitor);
-console.log("PLUGINS:", window.Capacitor?.Plugins);
-console.log("HTTP:", window.Capacitor?.Plugins?.CapacitorHttp);
-      Gunakan CapacitorHttp pada APK Android.
-      Ini menghindari masalah komunikasi WebView/fetch.
-    */
+    const capacitor =
+      window.Capacitor;
 
-    if(
-      window.Capacitor &&
-      window.Capacitor.Plugins &&
-      window.Capacitor.Plugins.CapacitorHttp
-    ){
-
-      const response =
-        await window.Capacitor.Plugins.CapacitorHttp.post({
-
-          url: API_URL,
-
-          headers:{
-            "Content-Type":"application/json"
-          },
-
-          data:body
-
-        });
-
-      let data = response.data;
-
-      if(typeof data === "string"){
-        data = JSON.parse(data);
-      }
-
-      console.log("SERVER RESPONSE:", data);
-
-      if(!data.ok){
-
-        throw new Error(
-          data.error ||
-          data.message ||
-          "Server gagal."
-        );
-
-      }
-
-      return data;
-
-    }
+    const http =
+      capacitor &&
+      capacitor.Plugins &&
+      capacitor.Plugins.CapacitorHttp;
 
 
-    /*
-      Fallback jika dibuka melalui browser.
-    */
-
-    const webResponse =
-      await fetch(API_URL,{
-
-        method:"POST",
-
-        headers:{
-          "Content-Type":"text/plain;charset=utf-8"
-        },
-
-        body:JSON.stringify(body)
-
-      });
-
-
-    const text =
-      await webResponse.text();
-
-    console.log(
-      "SERVER RESPONSE:",
-      text
-    );
-
-
-    let data;
-
-    try{
-
-      data = JSON.parse(text);
-
-    }catch(error){
+    if(!http){
 
       throw new Error(
-        "Respons server tidak valid. Isi respons: " +
-        text.substring(0,300)
+        "CapacitorHttp tidak tersedia di APK."
       );
 
     }
 
 
-    if(!data.ok){
+    const response =
+      await http.post({
+
+        url:API_URL,
+
+        headers:{
+          "Content-Type":"application/json",
+          "Accept":"application/json"
+        },
+
+        data:body
+
+      });
+
+
+    console.log(
+      "HTTP STATUS:",
+      response.status
+    );
+
+    console.log(
+      "SERVER RESPONSE:",
+      response.data
+    );
+
+
+    let data =
+      response.data;
+
+
+    if(typeof data === "string"){
+
+      try{
+
+        data =
+          JSON.parse(data);
+
+      }catch(error){
+
+        throw new Error(
+          "Respons server bukan JSON: " +
+          data.substring(0,300)
+        );
+
+      }
+
+    }
+
+
+    if(!data || !data.ok){
 
       throw new Error(
-        data.error ||
-        data.message ||
+        (data && data.error) ||
+        (data && data.message) ||
         "Server gagal."
       );
 
@@ -610,12 +584,14 @@ console.log("HTTP:", window.Capacitor?.Plugins?.CapacitorHttp);
 
     return data;
 
+
   }catch(error){
 
     console.error(
       "API ERROR:",
       error
     );
+
 
     throw new Error(
       error.message ||
@@ -644,7 +620,11 @@ async function waitForVideo(operation){
 
   const maxAttempts = 60;
 
-  for(let attempt = 1; attempt <= maxAttempts; attempt++){
+  for(
+    let attempt = 1;
+    attempt <= maxAttempts;
+    attempt++
+  ){
 
     $("status").textContent =
       "⏳ AI sedang membuat video... " +
@@ -652,23 +632,30 @@ async function waitForVideo(operation){
       "/60";
 
 
-    const result = await sendRequest({
+    const result =
+      await sendRequest({
 
-      action:"status",
+        action:"status",
 
-      operation:operation
+        operation:operation
 
-    });
+      });
 
 
-    if(result.done && result.videoUrl){
+    if(
+      result.done &&
+      result.videoUrl
+    ){
 
       return result.videoUrl;
 
     }
 
 
-    if(result.done && !result.videoUrl){
+    if(
+      result.done &&
+      !result.videoUrl
+    ){
 
       throw new Error(
         "Video selesai tetapi URL video tidak tersedia."
@@ -705,7 +692,8 @@ $("go").onclick = async () => {
 
   $("go").disabled = true;
 
-  $("result").style.display = "none";
+  $("result").style.display =
+    "none";
 
 
   try{
@@ -714,19 +702,20 @@ $("go").onclick = async () => {
       "⏳ Mengirim foto produk...";
 
 
-    const result = await sendRequest({
+    const result =
+      await sendRequest({
 
-      action:"generate",
+        action:"generate",
 
-      image:img,
+        image:img,
 
-      language:lang,
+        language:lang,
 
-      style:style,
+        style:style,
 
-      idea:$("idea").value
+        idea:$("idea").value
 
-    });
+      });
 
 
     if(!result.operation){
@@ -739,14 +728,19 @@ $("go").onclick = async () => {
 
 
     const videoUrl =
-      await waitForVideo(result.operation);
+      await waitForVideo(
+        result.operation
+      );
 
 
-    $("vid").src = videoUrl;
+    $("vid").src =
+      videoUrl;
 
-    $("save").href = videoUrl;
+    $("save").href =
+      videoUrl;
 
-    $("result").style.display = "block";
+    $("result").style.display =
+      "block";
 
     $("status").textContent =
       "✅ Video berhasil dibuat.";
@@ -758,7 +752,8 @@ $("go").onclick = async () => {
 
       url:videoUrl,
 
-      date:new Date().toLocaleString("id-ID")
+      date:new Date()
+        .toLocaleString("id-ID")
 
     });
 
@@ -766,12 +761,14 @@ $("go").onclick = async () => {
   }catch(error){
 
     $("status").textContent =
-      "❌ " + error.message;
+      "❌ " +
+      error.message;
 
   }
 
 
-  $("go").disabled = false;
+  $("go").disabled =
+    false;
 
 };
 
@@ -786,7 +783,9 @@ function saveHistory(item){
 
     history =
       JSON.parse(
-        localStorage.getItem("avsHistory") || "[]"
+        localStorage.getItem(
+          "avsHistory"
+        ) || "[]"
       );
 
   }catch(error){
@@ -800,7 +799,9 @@ function saveHistory(item){
 
   localStorage.setItem(
     "avsHistory",
-    JSON.stringify(history.slice(0,20))
+    JSON.stringify(
+      history.slice(0,20)
+    )
   );
 
 }
@@ -814,7 +815,9 @@ function loadHistory(){
 
     history =
       JSON.parse(
-        localStorage.getItem("avsHistory") || "[]"
+        localStorage.getItem(
+          "avsHistory"
+        ) || "[]"
       );
 
   }catch(error){
@@ -834,39 +837,44 @@ function loadHistory(){
   }
 
 
-  $("hist").innerHTML = history.map((item,index) => {
+  $("hist").innerHTML =
+    history.map(
+      (item,index) => {
 
-    return `
+        return `
 
-      <div class="item">
+          <div class="item">
 
-        <img
-          src="${item.image}"
-          alt="Produk"
-        >
+            <img
+              src="${item.image}"
+              alt="Produk"
+            >
 
-        <div>
+            <div>
 
-          <b>Video ${history.length-index}</b>
+              <b>
+                Video ${history.length-index}
+              </b>
 
-          <div class="status">
-            ${item.date}
+              <div class="status">
+                ${item.date}
+              </div>
+
+              <a
+                href="${item.url}"
+                target="_blank"
+              >
+                Buka video
+              </a>
+
+            </div>
+
           </div>
 
-          <a
-            href="${item.url}"
-            target="_blank"
-          >
-            Buka video
-          </a>
+        `;
 
-        </div>
-
-      </div>
-
-    `;
-
-  }).join("");
+      }
+    ).join("");
 
 }
 
