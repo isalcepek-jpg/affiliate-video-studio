@@ -760,9 +760,18 @@ $("go").onclick = async () => {
 
   }catch(error){
 
+    const detail =
+      error && error.message
+        ? error.message
+        : String(error);
+
+    console.error(
+      "GENERATE ERROR:",
+      error
+    );
+
     $("status").textContent =
-      "❌ " +
-      error.message;
+      "❌ ERROR: " + detail;
 
   }
 
