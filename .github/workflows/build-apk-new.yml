@@ -22,11 +22,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Check web app
+            - name: Prepare web app
         run: |
-          pwd
-          ls -la
-          test -f AffiliateVideoStudio/index.html
+          mkdir -p web
+          cp index.html web/index.html
+          echo "===== WEB FILES ====="
+          find web -maxdepth 2 -type f -print
 
       - name: Create Capacitor project
         run: |
