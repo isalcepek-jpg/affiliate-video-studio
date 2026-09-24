@@ -42,17 +42,10 @@ header p{
   opacity:.9
 }
 
-main{
-  padding:15px
-}
+main{padding:15px}
 
-.page{
-  display:none
-}
-
-.page.active{
-  display:block
-}
+.page{display:none}
+.page.active{display:block}
 
 .card{
   border:1px solid #e3eaf5;
@@ -90,9 +83,7 @@ label{
   margin-top:5px
 }
 
-input[type=file]{
-  display:none
-}
+input[type=file]{display:none}
 
 #preview{
   display:none;
@@ -144,15 +135,14 @@ textarea{
   font-size:15px
 }
 
-.primary:disabled{
-  opacity:.5
-}
+.primary:disabled{opacity:.5}
 
 .status{
   font-size:12px;
   color:#66758b;
   margin-top:10px;
-  line-height:1.5
+  line-height:1.5;
+  word-break:break-word
 }
 
 video{
@@ -242,7 +232,6 @@ video{
 <img id="preview" alt="Preview produk">
 </div>
 
-
 <div class="card">
 
 <label>Voice-over / bahasa</label>
@@ -262,9 +251,7 @@ video{
 </button>
 
 </div>
-
 </div>
-
 
 <div class="card">
 
@@ -285,9 +272,7 @@ Energetic
 </button>
 
 </div>
-
 </div>
-
 
 <div class="card">
 
@@ -300,7 +285,6 @@ placeholder="Contoh: tonjolkan kenyamanan, cocok untuk TikTok Shop..."
 
 </div>
 
-
 <div class="card">
 
 <button class="primary" id="go">
@@ -312,7 +296,6 @@ Belum ada video dibuat.
 </div>
 
 </div>
-
 
 <div class="card" id="result" style="display:none">
 
@@ -339,13 +322,8 @@ target="_blank"
 <section class="page" id="history">
 
 <div class="card">
-
 <h2>🕘 Riwayat</h2>
-
-<div id="hist">
-Belum ada video.
-</div>
-
+<div id="hist">Belum ada video.</div>
 </div>
 
 </section>
@@ -379,18 +357,15 @@ Google Login akan diaktifkan setelah OAuth/Firebase dipasang.
 <div class="nav">
 
 <button type="button" class="active" data-p="home">
-<span>⌂</span>
-Beranda
+<span>⌂</span>Beranda
 </button>
 
 <button type="button" data-p="history">
-<span>◷</span>
-Riwayat
+<span>◷</span>Riwayat
 </button>
 
 <button type="button" data-p="profile">
-<span>◎</span>
-Profil
+<span>◎</span>Profil
 </button>
 
 </div>
@@ -400,6 +375,10 @@ Profil
 
 <script>
 
+/* =========================
+   ALAMAT APPS SCRIPT
+========================= */
+
 const API_URL =
 "https://script.google.com/macros/s/AKfycbxQKr2ZavSJtQZbKBRY9KhNRz-qrlKT0NO3zXo_b_zva1LsRJVIo1rRgh1QMkYg0H9AKw/exec";
 
@@ -407,7 +386,6 @@ const API_URL =
 let img = null;
 let lang = "id-ID";
 let style = "UGC creator";
-
 
 const $ = id => document.getElementById(id);
 
@@ -420,14 +398,12 @@ document.querySelectorAll(".nav button").forEach(button => {
 
   button.onclick = () => {
 
-    document
-      .querySelectorAll(".nav button")
+    document.querySelectorAll(".nav button")
       .forEach(x => x.classList.remove("active"));
 
     button.classList.add("active");
 
-    document
-      .querySelectorAll(".page")
+    document.querySelectorAll(".page")
       .forEach(x => x.classList.remove("active"));
 
     $(button.dataset.p).classList.add("active");
@@ -442,15 +418,14 @@ document.querySelectorAll(".nav button").forEach(button => {
 
 
 /* =========================
-   PILIH BAHASA
+   BAHASA
 ========================= */
 
 document.querySelectorAll("#langs .chip").forEach(button => {
 
   button.onclick = () => {
 
-    document
-      .querySelectorAll("#langs .chip")
+    document.querySelectorAll("#langs .chip")
       .forEach(x => x.classList.remove("active"));
 
     button.classList.add("active");
@@ -463,15 +438,14 @@ document.querySelectorAll("#langs .chip").forEach(button => {
 
 
 /* =========================
-   PILIH GAYA
+   GAYA
 ========================= */
 
 document.querySelectorAll("#styles .chip").forEach(button => {
 
   button.onclick = () => {
 
-    document
-      .querySelectorAll("#styles .chip")
+    document.querySelectorAll("#styles .chip")
       .forEach(x => x.classList.remove("active"));
 
     button.classList.add("active");
@@ -484,12 +458,12 @@ document.querySelectorAll("#styles .chip").forEach(button => {
 
 
 /* =========================
-   KONVERSI FOTO KE BASE64
+   FOTO
 ========================= */
 
 function fileToBase64(file){
 
-  return new Promise((resolve,reject)=>{
+  return new Promise((resolve,reject) => {
 
     const reader = new FileReader();
 
@@ -505,21 +479,16 @@ function fileToBase64(file){
 }
 
 
-/* =========================
-   UPLOAD FOTO
-========================= */
-
 $("photo").addEventListener("change", async event => {
 
   const file = event.target.files[0];
 
-  if(!file){
-    return;
-  }
+  if(!file) return;
 
   try{
 
-    $("status").textContent = "⏳ Menyiapkan foto...";
+    $("status").textContent =
+      "⏳ Menyiapkan foto...";
 
     img = await fileToBase64(file);
 
@@ -528,7 +497,8 @@ $("photo").addEventListener("change", async event => {
 
     $("pick").textContent = file.name;
 
-    $("status").textContent = "✅ Foto siap digunakan.";
+    $("status").textContent =
+      "✅ Foto siap digunakan.";
 
   }catch(error){
 
@@ -543,69 +513,93 @@ $("photo").addEventListener("change", async event => {
 
 
 /* =========================
-   KIRIM REQUEST KE APPS SCRIPT
+   KOMUNIKASI SERVER
 ========================= */
 
 async function sendRequest(body){
 
-  const response = await fetch(API_URL, {
-
-    method: "POST",
-
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
-
-    body: JSON.stringify(body)
-
-  });
-
-
-  const text = await response.text();
-
-  let data;
+  $("status").textContent =
+    "⏳ Menghubungkan ke server...";
 
   try{
 
-    data = JSON.parse(text);
+    const response = await fetch(API_URL, {
+
+      method:"POST",
+
+      headers:{
+        "Content-Type":"text/plain;charset=utf-8"
+      },
+
+      body:JSON.stringify(body)
+
+    });
+
+
+    const text = await response.text();
+
+    console.log("SERVER RESPONSE:", text);
+
+
+    let data;
+
+    try{
+
+      data = JSON.parse(text);
+
+    }catch(error){
+
+      throw new Error(
+        "Respons server tidak valid. Isi respons: " +
+        text.substring(0,300)
+      );
+
+    }
+
+
+    if(!data.ok){
+
+      throw new Error(
+        data.error ||
+        data.message ||
+        "Server gagal."
+      );
+
+    }
+
+
+    return data;
 
   }catch(error){
 
-    console.log("Server response:", text);
+    console.error("API ERROR:", error);
 
     throw new Error(
-      "Respons server tidak valid."
+      error.message ||
+      "Tidak dapat terhubung ke server."
     );
 
   }
-
-
-  if(!data.ok){
-
-    throw new Error(
-      data.error || "Server gagal."
-    );
-
-  }
-
-
-  return data;
 
 }
 
 
 /* =========================
-   TUNGGU VIDEO
+   DELAY
 ========================= */
 
 function wait(ms){
 
   return new Promise(resolve =>
-    setTimeout(resolve, ms)
+    setTimeout(resolve,ms)
   );
 
 }
 
+
+/* =========================
+   CEK VIDEO
+========================= */
 
 async function waitForVideo(operation){
 
@@ -614,30 +608,31 @@ async function waitForVideo(operation){
   for(let attempt = 1; attempt <= maxAttempts; attempt++){
 
     $("status").textContent =
-      "⏳ Video sedang dibuat... (" +
+      "⏳ AI sedang membuat video... " +
       attempt +
-      "/60)";
+      "/60";
 
-    const status = await sendRequest({
 
-      action: "status",
+    const result = await sendRequest({
 
-      operation: operation
+      action:"status",
+
+      operation:operation
 
     });
 
 
-    if(status.done && status.videoUrl){
+    if(result.done && result.videoUrl){
 
-      return status.videoUrl;
+      return result.videoUrl;
 
     }
 
 
-    if(status.done && !status.videoUrl){
+    if(result.done && !result.videoUrl){
 
       throw new Error(
-        "Video selesai tetapi alamat video tidak tersedia."
+        "Video selesai tetapi URL video tidak tersedia."
       );
 
     }
@@ -649,14 +644,14 @@ async function waitForVideo(operation){
 
 
   throw new Error(
-    "Proses video terlalu lama. Silakan coba lagi."
+    "Pembuatan video terlalu lama. Silakan coba lagi."
   );
 
 }
 
 
 /* =========================
-   GENERATE VIDEO
+   GENERATE
 ========================= */
 
 $("go").onclick = async () => {
@@ -675,40 +670,39 @@ $("go").onclick = async () => {
 
   $("result").style.display = "none";
 
-  $("status").textContent =
-    "⏳ Mengirim foto ke AI...";
-
 
   try{
 
-    const generated = await sendRequest({
+    $("status").textContent =
+      "⏳ Mengirim foto produk...";
 
-      action: "generate",
 
-      image: img,
+    const result = await sendRequest({
 
-      language: lang,
+      action:"generate",
 
-      style: style,
+      image:img,
 
-      idea: $("idea").value
+      language:lang,
+
+      style:style,
+
+      idea:$("idea").value
 
     });
 
 
-    if(!generated.operation){
+    if(!result.operation){
 
       throw new Error(
-        "Server tidak memberikan operation."
+        "Server tidak memberikan ID proses video."
       );
 
     }
 
 
     const videoUrl =
-      await waitForVideo(
-        generated.operation
-      );
+      await waitForVideo(result.operation);
 
 
     $("vid").src = videoUrl;
@@ -718,25 +712,21 @@ $("go").onclick = async () => {
     $("result").style.display = "block";
 
     $("status").textContent =
-      "✅ Video selesai dibuat.";
+      "✅ Video berhasil dibuat.";
 
 
     saveHistory({
 
-      image: img,
+      image:img,
 
-      url: videoUrl,
+      url:videoUrl,
 
-      date: new Date().toLocaleString(
-        "id-ID"
-      )
+      date:new Date().toLocaleString("id-ID")
 
     });
 
 
   }catch(error){
-
-    console.error(error);
 
     $("status").textContent =
       "❌ " + error.message;
@@ -773,11 +763,9 @@ function saveHistory(item){
 
   history.unshift(item);
 
-  history = history.slice(0,20);
-
   localStorage.setItem(
     "avsHistory",
-    JSON.stringify(history)
+    JSON.stringify(history.slice(0,20))
   );
 
 }
@@ -811,8 +799,9 @@ function loadHistory(){
   }
 
 
-  $("hist").innerHTML =
-    history.map((item,index) => `
+  $("hist").innerHTML = history.map((item,index) => {
+
+    return `
 
       <div class="item">
 
@@ -823,7 +812,7 @@ function loadHistory(){
 
         <div>
 
-          <b>Video ${history.length - index}</b>
+          <b>Video ${history.length-index}</b>
 
           <div class="status">
             ${item.date}
@@ -840,10 +829,11 @@ function loadHistory(){
 
       </div>
 
-    `).join("");
+    `;
+
+  }).join("");
 
 }
-
 
 </script>
 
