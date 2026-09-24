@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Check web app
         run: |
@@ -31,15 +31,27 @@ jobs:
       - name: Create Capacitor project
         run: |
           npm init -y
-          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+          npm install \
+            @capacitor/core@7 \
+            @capacitor/cli@7 \
+            @capacitor/android@7
 
           cat > capacitor.config.json <<'EOF'
           {
             "appId": "com.isalcepek.affiliatevideostudio",
             "appName": "Affiliate Video Studio",
-            "webDir": "AffiliateVideoStudio"
+            "webDir": "AffiliateVideoStudio",
+            "plugins": {
+              "CapacitorHttp": {
+                "enabled": true
+              }
+            }
           }
           EOF
+
+          echo "===== CAPACITOR CONFIG ====="
+          cat capacitor.config.json
 
       - name: Add Android platform
         run: npx cap add android
@@ -51,7 +63,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
