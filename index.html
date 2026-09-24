@@ -137,6 +137,20 @@ textarea{
 
 .primary:disabled{opacity:.5}
 
+.test{
+  width:100%;
+  border:1px solid #1976ff;
+  border-radius:13px;
+  background:white;
+  color:#1976ff;
+  padding:12px;
+  font-weight:bold;
+  font-size:14px;
+  margin-top:10px
+}
+
+.test:disabled{opacity:.5}
+
 .status{
   font-size:12px;
   color:#66758b;
@@ -289,6 +303,10 @@ placeholder="Contoh: tonjolkan kenyamanan, cocok untuk TikTok Shop..."
 
 <button class="primary" id="go">
 ✨ Generate Video AI
+</button>
+
+<button class="test" id="testServer">
+🔌 Tes Koneksi Server
 </button>
 
 <div class="status" id="status">
@@ -495,6 +513,144 @@ $("photo").addEventListener("change", async event => {
 });
 
 
+/* CEK CAPACITOR */
+
+function getCapacitorHttp(){
+
+  const capacitor =
+    window.Capacitor;
+
+  if(!capacitor){
+
+    throw new Error(
+      "Capacitor tidak ditemukan. APK mungkin masih memakai file lama."
+    );
+
+  }
+
+  console.log(
+    "CAPACITOR:",
+    capacitor
+  );
+
+  console.log(
+    "PLUGINS:",
+    capacitor.Plugins
+  );
+
+  const http =
+    capacitor.Plugins &&
+    capacitor.Plugins.CapacitorHttp;
+
+  console.log(
+    "CAPACITOR HTTP:",
+    http
+  );
+
+  if(!http){
+
+    throw new Error(
+      "CapacitorHttp tidak tersedia di APK."
+    );
+
+  }
+
+  return http;
+
+}
+
+
+/* TES KONEKSI SERVER */
+
+$("testServer").onclick = async () => {
+
+  const button =
+    $("testServer");
+
+  button.disabled =
+    true;
+
+  $("status").textContent =
+    "⏳ Menguji koneksi ke server...";
+
+  try{
+
+    const http =
+      getCapacitorHttp();
+
+
+    const response =
+      await http.get({
+
+        url:API_URL,
+
+        headers:{
+          "Accept":"text/plain"
+        }
+
+      });
+
+
+    console.log(
+      "TEST HTTP STATUS:",
+      response.status
+    );
+
+    console.log(
+      "TEST RESPONSE:",
+      response.data
+    );
+
+
+    const text =
+      typeof response.data === "string"
+        ? response.data
+        : JSON.stringify(response.data);
+
+
+    if(
+      response.status >= 200 &&
+      response.status < 300
+    ){
+
+      $("status").textContent =
+        "✅ Koneksi berhasil. Server menjawab: " +
+        text;
+
+    }else{
+
+      $("status").textContent =
+        "❌ Server menjawab HTTP " +
+        response.status +
+        ": " +
+        text;
+
+    }
+
+  }catch(error){
+
+    console.error(
+      "TEST SERVER ERROR:",
+      error
+    );
+
+    const detail =
+      error && error.message
+        ? error.message
+        : String(error);
+
+    $("status").textContent =
+      "❌ TES GAGAL: " +
+      detail;
+
+  }
+
+  button.disabled =
+    false;
+
+};
+
+
 /* KOMUNIKASI SERVER */
 
 async function sendRequest(body){
@@ -504,22 +660,8 @@ async function sendRequest(body){
 
   try{
 
-    const capacitor =
-      window.Capacitor;
-
     const http =
-      capacitor &&
-      capacitor.Plugins &&
-      capacitor.Plugins.CapacitorHttp;
-
-
-    if(!http){
-
-      throw new Error(
-        "CapacitorHttp tidak tersedia di APK."
-      );
-
-    }
+      getCapacitorHttp();
 
 
     const response =
@@ -890,4 +1032,4 @@ function loadHistory(){
 </script>
 
 </body>
-</html>
+  </html>
