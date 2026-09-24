@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="id">
 <head>
@@ -318,7 +319,6 @@ target="_blank"
 
 </section>
 
-
 <section class="page" id="history">
 
 <div class="card">
@@ -327,7 +327,6 @@ target="_blank"
 </div>
 
 </section>
-
 
 <section class="page" id="profile">
 
@@ -353,7 +352,6 @@ Google Login akan diaktifkan setelah OAuth/Firebase dipasang.
 
 </main>
 
-
 <div class="nav">
 
 <button type="button" class="active" data-p="home">
@@ -372,16 +370,10 @@ Google Login akan diaktifkan setelah OAuth/Firebase dipasang.
 
 </div>
 
-
 <script>
-
-/* =========================
-   ALAMAT APPS SCRIPT
-========================= */
 
 const API_URL =
 "https://script.google.com/macros/s/AKfycbxQKr2ZavSJtQZbKBRY9KhNRz-qrlKT0NO3zXo_b_zva1LsRJVIo1rRgh1QMkYg0H9AKw/exec";
-
 
 let img = null;
 let lang = "id-ID";
@@ -390,9 +382,7 @@ let style = "UGC creator";
 const $ = id => document.getElementById(id);
 
 
-/* =========================
-   NAVIGASI
-========================= */
+/* NAVIGASI */
 
 document.querySelectorAll(".nav button").forEach(button => {
 
@@ -417,9 +407,7 @@ document.querySelectorAll(".nav button").forEach(button => {
 });
 
 
-/* =========================
-   BAHASA
-========================= */
+/* BAHASA */
 
 document.querySelectorAll("#langs .chip").forEach(button => {
 
@@ -437,9 +425,7 @@ document.querySelectorAll("#langs .chip").forEach(button => {
 });
 
 
-/* =========================
-   GAYA
-========================= */
+/* GAYA */
 
 document.querySelectorAll("#styles .chip").forEach(button => {
 
@@ -457,9 +443,7 @@ document.querySelectorAll("#styles .chip").forEach(button => {
 });
 
 
-/* =========================
-   FOTO
-========================= */
+/* FOTO */
 
 function fileToBase64(file){
 
@@ -512,9 +496,7 @@ $("photo").addEventListener("change", async event => {
 });
 
 
-/* =========================
-   KOMUNIKASI SERVER
-========================= */
+/* KOMUNIKASI SERVER */
 
 async function sendRequest(body){
 
@@ -523,22 +505,78 @@ async function sendRequest(body){
 
   try{
 
-    const response = await fetch(API_URL, {
+    /*
+      Gunakan CapacitorHttp pada APK Android.
+      Ini menghindari masalah komunikasi WebView/fetch.
+    */
 
-      method:"POST",
+    if(
+      window.Capacitor &&
+      window.Capacitor.Plugins &&
+      window.Capacitor.Plugins.CapacitorHttp
+    ){
 
-      headers:{
-        "Content-Type":"text/plain;charset=utf-8"
-      },
+      const response =
+        await window.Capacitor.Plugins.CapacitorHttp.post({
 
-      body:JSON.stringify(body)
+          url: API_URL,
 
-    });
+          headers:{
+            "Content-Type":"application/json"
+          },
+
+          data:body
+
+        });
+
+      let data = response.data;
+
+      if(typeof data === "string"){
+        data = JSON.parse(data);
+      }
+
+      console.log("SERVER RESPONSE:", data);
+
+      if(!data.ok){
+
+        throw new Error(
+          data.error ||
+          data.message ||
+          "Server gagal."
+        );
+
+      }
+
+      return data;
+
+    }
 
 
-    const text = await response.text();
+    /*
+      Fallback jika dibuka melalui browser.
+    */
 
-    console.log("SERVER RESPONSE:", text);
+    const webResponse =
+      await fetch(API_URL,{
+
+        method:"POST",
+
+        headers:{
+          "Content-Type":"text/plain;charset=utf-8"
+        },
+
+        body:JSON.stringify(body)
+
+      });
+
+
+    const text =
+      await webResponse.text();
+
+    console.log(
+      "SERVER RESPONSE:",
+      text
+    );
 
 
     let data;
@@ -572,7 +610,10 @@ async function sendRequest(body){
 
   }catch(error){
 
-    console.error("API ERROR:", error);
+    console.error(
+      "API ERROR:",
+      error
+    );
 
     throw new Error(
       error.message ||
@@ -584,9 +625,7 @@ async function sendRequest(body){
 }
 
 
-/* =========================
-   DELAY
-========================= */
+/* DELAY */
 
 function wait(ms){
 
@@ -597,9 +636,7 @@ function wait(ms){
 }
 
 
-/* =========================
-   CEK VIDEO
-========================= */
+/* CEK VIDEO */
 
 async function waitForVideo(operation){
 
@@ -650,9 +687,7 @@ async function waitForVideo(operation){
 }
 
 
-/* =========================
-   GENERATE
-========================= */
+/* GENERATE */
 
 $("go").onclick = async () => {
 
@@ -739,9 +774,7 @@ $("go").onclick = async () => {
 };
 
 
-/* =========================
-   RIWAYAT
-========================= */
+/* RIWAYAT */
 
 function saveHistory(item){
 
@@ -838,4 +871,4 @@ function loadHistory(){
 </script>
 
 </body>
-  </html>
+</html>
