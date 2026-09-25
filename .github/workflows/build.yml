@@ -39,16 +39,14 @@ jobs:
 
           cp index.html www/index.html
 
-          if [ ! -f "isal-nova-logo.png" ]; then
-            echo "ERROR: isal-nova-logo.png tidak ditemukan di root repository."
-            echo "File PNG yang tersedia:"
-            find . -type f -name "*.png" -not -path "./.git/*" || true
+          if [ ! -f "isal-nova-logo-1.png" ]; then
+            echo "ERROR: isal-nova-logo-1.png tidak ditemukan di root repository."
             exit 1
           fi
 
-          cp isal-nova-logo.png www/isal-nova-logo.png
+          cp isal-nova-logo-1.png www/isal-nova-logo.png
 
-          echo "Logo ISAL NOVA ditemukan."
+          echo "Logo ISAL NOVA baru ditemukan."
           ls -lh www/isal-nova-logo.png
 
       - name: Add Android platform
@@ -64,9 +62,7 @@ jobs:
           from pathlib import Path
           import re
 
-          strings = Path(
-              "android/app/src/main/res/values/strings.xml"
-          )
+          strings = Path("android/app/src/main/res/values/strings.xml")
 
           if strings.exists():
               text = strings.read_text()
@@ -112,7 +108,7 @@ jobs:
           cp "$LOGO" android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           cp "$LOGO" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-          echo "Logo ISAL NOVA berhasil dipasang."
+          echo "Logo baru berhasil dipasang."
 
       - name: Force Android icon
         shell: bash
@@ -121,9 +117,7 @@ jobs:
           from pathlib import Path
           import re
 
-          manifest = Path(
-              "android/app/src/main/AndroidManifest.xml"
-          )
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
 
           text = manifest.read_text()
 
@@ -140,8 +134,6 @@ jobs:
           )
 
           manifest.write_text(text)
-
-          print("AndroidManifest icon = ISAL NOVA")
           PY
 
       - name: Build ISAL NOVA APK
