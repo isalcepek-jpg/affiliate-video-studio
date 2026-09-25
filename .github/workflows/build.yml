@@ -39,21 +39,17 @@ jobs:
 
           cp index.html www/index.html
 
-          LOGO=$(find . -type f \
-            -iname "isal-nova-logo.png" \
-            -o -iname "*isal*nova*.png" \
-            -o -iname "*logo*.png" \
-            -not -path "./.git/*" \
-            | head -n 1)
-
-          if [ -z "$LOGO" ]; then
-            echo "ERROR: Logo ISAL NOVA tidak ditemukan."
+          if [ ! -f "isal-nova-logo.png" ]; then
+            echo "ERROR: isal-nova-logo.png tidak ditemukan di root repository."
+            echo "File PNG yang tersedia:"
+            find . -type f -name "*.png" -not -path "./.git/*" || true
             exit 1
           fi
 
-          echo "Logo ditemukan: $LOGO"
+          cp isal-nova-logo.png www/isal-nova-logo.png
 
-          cp "$LOGO" www/isal-nova-logo.png
+          echo "Logo ISAL NOVA ditemukan."
+          ls -lh www/isal-nova-logo.png
 
       - name: Add Android platform
         run: npx cap add android
@@ -84,56 +80,84 @@ jobs:
               strings.write_text(text)
           PY
 
-      - name: Replace Android launcher icon
+      - name: Replace launcher icon
         shell: bash
         run: |
           set -e
 
           LOGO="www/isal-nova-logo.png"
 
-          echo "Menggunakan logo: $LOGO"
-
-          # Hapus adaptive icon bawaan Capacitor
           rm -rf android/app/src/main/res/mipmap-anydpi-v26
           rm -rf android/app/src/main/res/mipmap-anydpi
 
-          # Hapus icon XML bawaan
           find android/app/src/main/res \
             -type f \
-            -name "ic_launcher.xml" \
-            -o -name "ic_launcher_round.xml" \
+            -name "ic_launcher.xml" \
             -delete
 
-          # Siapkan folder launcher
+          find android/app/src/main/res \
+            -type f \
+            -name "ic_launcher_round.xml" \
+            -delete
+
           mkdir -p android/app/src/main/res/mipmap-mdpi
           mkdir -p android/app/src/main/res/mipmap-hdpi
           mkdir -p android/app/src/main/res/mipmap-xhdpi
           mkdir -p android/app/src/main/res/mipmap-xxhdpi
           mkdir -p android/app/src/main/res/mipmap-xxxhdpi
 
-          # Gunakan logo ISAL NOVA
-          cp "$LOGO" \
-            android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          cp "$LOGO" android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          cp "$LOGO" android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp "$LOGO" android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp "$LOGO" android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp "$LOGO" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-          cp "$LOGO" \
-            android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          echo "Logo ISAL NOVA berhasil dipasang."
 
-          cp "$LOGO" \
-            android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-
-          cp "$LOGO" \
-            android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-
-          cp "$LOGO" \
-            android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
-          echo "Logo launcher ISAL NOVA berhasil dipasang."
-
-      - name: Force AndroidManifest icon
+      - name: Force Android icon
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          manifest = Path
+          manifest = Path(
+              "android/app/src/main/AndroidManifest.xml"
+          )
+
+          text = manifest.read_text()
+
+          text = re.sub(
+              r'android:icon="[^"]+"',
+              'android:icon="@mipmap/ic_launcher"',
+              text
+          )
+
+          text = re.sub(
+              r'android:roundIcon="[^"]+"',
+              'android:roundIcon="@mipmap/ic_launcher"',
+              text
+          )
+
+          manifest.write_text(text)
+
+          print("AndroidManifest icon = ISAL NOVA")
+          PY
+
+      - name: Build ISAL NOVA APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew clean
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk ISAL-NOVA.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ISAL-NOVA-apk
+          path: ISAL-NOVA.apk
+          retention-days: 7
