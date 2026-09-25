@@ -9,17 +9,27 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = Number(process.env.PORT || 10000);
 
-// Gemini model
-const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+// ==========================================
+// ISAL NOVA AI
+// Google Gemini Free Tier
+// ==========================================
+
+const model =
+  process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
 app.disable('x-powered-by');
 
 app.use(cors({ origin: true }));
-app.use(express.json({ limit: '1mb' }));
 
-// ===============================
+app.use(
+  express.json({
+    limit: '1mb'
+  })
+);
+
+// ==========================================
 // HEALTH CHECK
-// ===============================
+// ==========================================
 
 app.get('/health', (_req, res) => {
   res.json({
@@ -30,13 +40,13 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// ===============================
+// ==========================================
 // AI CHAT
-// ===============================
+// ==========================================
 
 app.post('/api/chat', async (req, res) => {
   try {
-    // Pastikan Gemini API Key tersedia
+    // Cek API Key
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({
         error: 'Gemini AI backend is not configured yet.'
@@ -49,16 +59,22 @@ app.post('/api/chat', async (req, res) => {
       language = 'en'
     } = req.body || {};
 
-    // Validasi pesan
-    if (typeof message !== 'string' || !message.trim()) {
+    // ========================================
+    // VALIDASI PESAN
+    // ========================================
+
+    if (
+      typeof message !== 'string' ||
+      !message.trim()
+    ) {
       return res.status(400).json({
         error: 'A message is required.'
       });
     }
 
-    // ===============================
+    // ========================================
     // BERSIHKAN HISTORY
-    // ===============================
+    // ========================================
 
     const safeHistory = Array.isArray(history)
       ? history
@@ -66,11 +82,18 @@ app.post('/api/chat', async (req, res) => {
           .filter(
             item =>
               item &&
-              (item.role === 'user' || item.role === 'assistant') &&
+              (
+                item.role === 'user' ||
+                item.role === 'assistant'
+              ) &&
               typeof item.content === 'string'
           )
           .map(item => ({
-            role: item.role === 'assistant' ? 'model' : 'user',
+            role:
+              item.role === 'assistant'
+                ? 'model'
+                : 'user',
+
             parts: [
               {
                 text: item.content.slice(0, 12000)
@@ -79,41 +102,53 @@ app.post('/api/chat', async (req, res) => {
           }))
       : [];
 
-    // ===============================
+    // ========================================
     // BAHASA
-    // ===============================
+    // ========================================
 
-    const languageCode = String(language || 'en').slice(0, 16);
+    const languageCode =
+      String(language || 'en').slice(0, 16);
+
+    // ========================================
+    // INSTRUKSI ISAL NOVA
+    // ========================================
 
     const systemInstruction = `
-You are ISAL NOVA, an advanced AI technology assistant.
+You are ISAL NOVA, an AI technology assistant.
 
-Your responsibilities:
-- Be helpful, accurate, clear and practical.
-- Understand the user's question and context.
-- Help the user step by step when they are building technology.
-- Do not claim that you performed an action that you did not actually perform.
-- Do not claim to have accessed information that you did not actually access.
-- Keep answers understandable.
-- When the user asks for technical help, provide concrete instructions.
-- Respect the user's selected language.
+Your job is to help the user clearly, accurately,
+and practically.
 
-IMPORTANT LANGUAGE RULE:
-Always answer in the language selected by the user.
+IMPORTANT RULES:
 
-Selected language code:
+1. Always answer the user's question directly.
+2. Be helpful and understandable.
+3. When explaining technology, give step-by-step
+   instructions when appropriate.
+4. Do not claim that you performed an action
+   that you did not actually perform.
+5. Do not claim to have accessed information
+   that you did not actually access.
+6. Respect the user's selected application language.
+7. Keep the conversation natural.
+8. If the user asks for code, provide working code.
+9. If the user is building something, help them
+   continue from their current progress.
+
+SELECTED APPLICATION LANGUAGE:
 ${languageCode}
 
-If the user writes in another language but the application language is selected,
-follow the selected application language whenever appropriate.
+Always respond in the selected application language
+whenever possible.
 `;
 
-    // ===============================
-    // BENTUK CONTENT GEMINI
-    // ===============================
+    // ========================================
+    // CONTENT GEMINI
+    // ========================================
 
     const contents = [
       ...safeHistory,
+
       {
         role: 'user',
         parts: [
@@ -124,17 +159,21 @@ follow the selected application language whenever appropriate.
       }
     ];
 
-    // ===============================
+    // ========================================
     // REQUEST KE GEMINI
-    // ===============================
+    // ========================================
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(
+        process.env.GEMINI_API_KEY
+      )}`,
       {
         method: 'POST',
+
         headers: {
           'Content-Type': 'application/json'
         },
+
         body: JSON.stringify({
           system_instruction: {
             parts: [
@@ -143,9 +182,10 @@ follow the selected application language whenever appropriate.
               }
             ]
           },
+
           contents,
+
           generationConfig: {
-            temperature: 0.7,
             maxOutputTokens: 2048
           }
         })
@@ -154,9 +194,9 @@ follow the selected application language whenever appropriate.
 
     const data = await response.json();
 
-    // ===============================
-    // ERROR GEMINI
-    // ===============================
+    // ========================================
+    // ERROR DARI GEMINI
+    // ========================================
 
     if (!response.ok) {
       console.error(
@@ -169,9 +209,9 @@ follow the selected application language whenever appropriate.
       });
     }
 
-    // ===============================
-    // AMBIL JAWABAN
-    // ===============================
+    // ========================================
+    // AMBIL JAWABAN AI
+    // ========================================
 
     const reply =
       data?.candidates?.[0]?.content?.parts
@@ -190,9 +230,9 @@ follow the selected application language whenever appropriate.
       });
     }
 
-    // ===============================
-    // RESPONSE KE APK
-    // ===============================
+    // ========================================
+    // KIRIM KE APK
+    // ========================================
 
     res.json({
       reply,
@@ -201,20 +241,22 @@ follow the selected application language whenever appropriate.
     });
 
   } catch (error) {
+
     console.error(
       'ISAL NOVA Gemini error:',
       error?.message || error
     );
 
     res.status(500).json({
-      error: 'AI request failed. Please try again.'
+      error:
+        'AI request failed. Please try again.'
     });
   }
 });
 
-// ===============================
+// ==========================================
 // STATIC WEB
-// ===============================
+// ==========================================
 
 app.use(
   express.static(
@@ -222,18 +264,33 @@ app.use(
   )
 );
 
-app.get('/{*splat}', (_req, res) => {
-  res.sendFile(
-    path.join(__dirname, 'www', 'index.html')
-  );
-});
+// ==========================================
+// FALLBACK
+// ==========================================
 
-// ===============================
+app.get(
+  '/{*splat}',
+  (_req, res) => {
+    res.sendFile(
+      path.join(
+        __dirname,
+        'www',
+        'index.html'
+      )
+    );
+  }
+);
+
+// ==========================================
 // START SERVER
-// ===============================
+// ==========================================
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(
-    `ISAL NOVA AI Core listening on port ${port}`
-  );
-});
+app.listen(
+  port,
+  '0.0.0.0',
+  () => {
+    console.log(
+      `ISAL NOVA AI Core listening on port ${port}`
+    );
+  }
+);
