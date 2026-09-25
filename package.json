@@ -1,7 +1,0 @@
-{
-  "name":"isal-nova-v5",
-  "version":"1.0.0",
-  "scripts":{"build":"echo ISAL NOVA web ready"},
-  "dependencies":{"@capacitor/core":"^7.4.3","@capacitor/android":"^7.4.3"},
-  "devDependencies":{"@capacitor/cli":"^7.4.3"}
-}
