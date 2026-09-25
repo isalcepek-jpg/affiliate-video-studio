@@ -1,1 +1,8 @@
-{"appId":"com.isalnova.app","appName":"ISAL NOVA","webDir":"www","bundledWebRuntime":false}
+{
+  "appId": "com.isalnova.app",
+  "appName": "ISAL NOVA",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https"
+  }
+}
