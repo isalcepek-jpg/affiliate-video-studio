@@ -134,81 +134,776 @@ body[data-theme="dark"] [style*="#8ea2bd"],body[data-theme="dark"] [style*="#829
 </nav>
 </div><div class="toast" id="toast"></div>
 <script>
-setTimeout(()=>document.getElementById('splash').classList.add('hide'),3500);
-function show(id,btn){document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');window.scrollTo(0,0)}
-function openChat(){show('chat');let v=document.getElementById('homeInput').value;if(v){document.getElementById('chatInput').value=v;sendChat();}}
-function sendChat(){let i=document.getElementById('chatInput'),v=i.value.trim();if(!v)return;let b=document.getElementById('chatbox');b.innerHTML+=`<div class="msg me">${esc(v)}</div>`;i.value='';setTimeout(()=>{b.innerHTML+=`<div class="msg ai">Saya menerima pesanmu. AI Core nyata akan kita sambungkan pada tahap berikutnya.</div>`;b.scrollTop=b.scrollHeight},500)}
-function esc(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function toast(t){let x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',2200)}
+/* =========================================================
+   ISAL NOVA — CORE
+   ========================================================= */
+
+setTimeout(() => {
+  const splash = document.getElementById('splash');
+  if (splash) splash.classList.add('hide');
+}, 3500);
+
+
+/* =========================================================
+   BACKEND CONFIGURATION
+   ========================================================= */
+
+const NOVA_API_URL =
+  localStorage.getItem('novaApiUrl') ||
+  'https://GANTI-DENGAN-URL-RENDER-KAMU';
+
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+function show(id, btn) {
+  document.querySelectorAll('.section').forEach(section => {
+    section.classList.remove('active');
+  });
+
+  const target = document.getElementById(id);
+
+  if (target) {
+    target.classList.add('active');
+  }
+
+  document.querySelectorAll('.nav').forEach(nav => {
+    nav.classList.remove('active');
+  });
+
+  if (btn) {
+    btn.classList.add('active');
+  }
+
+  window.scrollTo(0, 0);
+}
+
+
+/* =========================================================
+   OPEN CHAT
+   ========================================================= */
+
+function openChat() {
+  show('chat');
+
+  const homeInput = document.getElementById('homeInput');
+  const chatInput = document.getElementById('chatInput');
+
+  if (!chatInput) return;
+
+  if (homeInput && homeInput.value.trim()) {
+    chatInput.value = homeInput.value.trim();
+    homeInput.value = '';
+    sendChat();
+  } else {
+    setTimeout(() => {
+      chatInput.focus();
+    }, 100);
+  }
+}
+
+
+/* =========================================================
+   CHAT MEMORY
+   ========================================================= */
+
+let chatHistory = [];
+
+
+/* =========================================================
+   SEND CHAT TO ISAL NOVA AI CORE
+   ========================================================= */
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const chatbox = document.getElementById('chatbox');
+
+  if (!input || !chatbox) return;
+
+  const message = input.value.trim();
+
+  if (!message) return;
+
+  /* USER MESSAGE */
+
+  const userMessage = document.createElement('div');
+
+  userMessage.className = 'msg me';
+
+  userMessage.textContent = message;
+
+  chatbox.appendChild(userMessage);
+
+  input.value = '';
+  input.disabled = true;
+
+  chatbox.scrollTop = chatbox.scrollHeight;
+
+
+  /* LOADING */
+
+  const loading = document.createElement('div');
+
+  loading.className = 'msg ai';
+  loading.id = 'novaLoading';
+
+  loading.textContent = '...';
+
+  chatbox.appendChild(loading);
+
+  chatbox.scrollTop = chatbox.scrollHeight;
+
+
+  try {
+
+    /* CURRENT LANGUAGE */
+
+    const languageSelect =
+      document.getElementById('languageSelect');
+
+    const language =
+      languageSelect?.value ||
+      localStorage.getItem('novaLanguage') ||
+      'id';
+
+
+    /* SEND REQUEST */
+
+    const response = await fetch(
+      `${NOVA_API_URL}/api/chat`,
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        body: JSON.stringify({
+          message: message,
+
+          history: chatHistory.slice(-12),
+
+          language: language
+        })
+      }
+    );
+
+
+    /* READ RESPONSE */
+
+    let data = {};
+
+    try {
+      data = await response.json();
+    } catch (_) {
+      data = {};
+    }
+
+
+    /* REMOVE LOADING */
+
+    loading.remove();
+
+
+    /* SERVER ERROR */
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+        `Server error: ${response.status}`
+      );
+    }
+
+
+    /* AI RESPONSE */
+
+    const reply =
+      typeof data.reply === 'string' &&
+      data.reply.trim()
+        ? data.reply.trim()
+        : 'AI tidak memberikan jawaban.';
+
+
+    /* SAVE MEMORY */
+
+    chatHistory.push({
+      role: 'user',
+      content: message
+    });
+
+    chatHistory.push({
+      role: 'assistant',
+      content: reply
+    });
+
+
+    /* KEEP LAST 12 MESSAGES */
+
+    chatHistory =
+      chatHistory.slice(-12);
+
+
+    /* AI MESSAGE */
+
+    const aiMessage =
+      document.createElement('div');
+
+    aiMessage.className = 'msg ai';
+
+    aiMessage.textContent = reply;
+
+    chatbox.appendChild(aiMessage);
+
+    chatbox.scrollTop =
+      chatbox.scrollHeight;
+
+
+  } catch (error) {
+
+    console.error(
+      'ISAL NOVA AI ERROR:',
+      error
+    );
+
+
+    /* REMOVE LOADING */
+
+    const currentLoading =
+      document.getElementById('novaLoading');
+
+    if (currentLoading) {
+      currentLoading.remove();
+    }
+
+
+    /* ERROR MESSAGE */
+
+    const errorMessage =
+      document.createElement('div');
+
+    errorMessage.className = 'msg ai';
+
+    errorMessage.textContent =
+      'ISAL NOVA belum dapat terhubung ke AI Core. Pastikan backend aktif dan URL server sudah benar.';
+
+    chatbox.appendChild(errorMessage);
+
+    chatbox.scrollTop =
+      chatbox.scrollHeight;
+
+  } finally {
+
+    input.disabled = false;
+
+    input.focus();
+  }
+}
+
+
+/* =========================================================
+   ESCAPE HTML
+   ========================================================= */
+
+function esc(value) {
+  return String(value).replace(
+    /[&<>"']/g,
+    character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[character])
+  );
+}
+
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+function toast(message) {
+
+  const element =
+    document.getElementById('toast');
+
+  if (!element) return;
+
+  element.textContent = message;
+
+  element.style.display = 'block';
+
+  setTimeout(() => {
+    element.style.display = 'none';
+  }, 2200);
+}
+
+
+/* =========================================================
+   OPTION SELECTOR
+   ========================================================= */
+
+function selectOption(button, group) {
+
+  const grid =
+    group === 'model'
+      ? document.getElementById('modelGrid')
+      : document.getElementById('voiceGrid');
+
+  if (!grid) return;
+
+  grid
+    .querySelectorAll('.optionCard')
+    .forEach(card => {
+      card.classList.remove('active');
+    });
+
+  button.classList.add('active');
+
+  localStorage.setItem(
+    `nova_${group}`,
+    button.innerText.trim()
+  );
+}
+
+
+/* =========================================================
+   THEME
+   ========================================================= */
+
+function setTheme(theme, button) {
+
+  document.documentElement
+    .setAttribute(
+      'data-theme',
+      theme
+    );
+
+  document.body
+    .setAttribute(
+      'data-theme',
+      theme
+    );
+
+  localStorage.setItem(
+    'novaTheme',
+    theme
+  );
+
+  if (button) {
+
+    const parent =
+      button.parentElement;
+
+    if (parent) {
+
+      parent
+        .querySelectorAll('.optionCard')
+        .forEach(card => {
+          card.classList.remove('active');
+        });
+
+      button.classList.add('active');
+    }
+  }
+}
+
+
+/* =========================================================
+   LANGUAGE
+   ========================================================= */
+
+function changeLanguage(language) {
+
+  if (!language) return;
+
+  localStorage.setItem(
+    'novaLanguage',
+    language
+  );
+
+  applyLanguage(language);
+}
+
+
+function applyLanguage(language) {
+
+  const dictionary =
+    NOVA_I18N[language] ||
+    NOVA_I18N.en;
+
+  /* TEXT */
+
+  document
+    .querySelectorAll('[data-i18n]')
+    .forEach(element => {
+
+      const key =
+        element.getAttribute(
+          'data-i18n'
+        );
+
+      if (
+        dictionary[key] !== undefined
+      ) {
+        element.textContent =
+          dictionary[key];
+      }
+    });
+
+
+  /* PLACEHOLDERS */
+
+  document
+    .querySelectorAll(
+      '[data-i18n-placeholder]'
+    )
+    .forEach(element => {
+
+      const key =
+        element.getAttribute(
+          'data-i18n-placeholder'
+        );
+
+      if (
+        dictionary[key] !== undefined
+      ) {
+        element.placeholder =
+          dictionary[key];
+      }
+    });
+
+
+  /* SELECT */
+
+  const selector =
+    document.getElementById(
+      'languageSelect'
+    );
+
+  if (selector) {
+    selector.value = language;
+  }
+}
+
+
+/* =========================================================
+   INITIAL SETTINGS
+   ========================================================= */
+
+document.addEventListener(
+  'DOMContentLoaded',
+  () => {
+
+    const savedTheme =
+      localStorage.getItem(
+        'novaTheme'
+      ) || 'dark';
+
+    document.documentElement
+      .setAttribute(
+        'data-theme',
+        savedTheme
+      );
+
+    document.body
+      .setAttribute(
+        'data-theme',
+        savedTheme
+      );
+
+
+    const savedLanguage =
+      localStorage.getItem(
+        'novaLanguage'
+      ) || 'id';
+
+    if (
+      typeof NOVA_I18N !== 'undefined'
+    ) {
+      applyLanguage(
+        savedLanguage
+      );
+    }
+  }
+);
 </script>
+
 
 <script>
-const NOVA_I18N={"en":{"home":"Home","chat":"Chat","research":"Research","create":"Create","agent":"Agent","live":"AI Live","build":"Build With Me","more":"More","projects":"Projects","memory":"Memory","skills":"Skills","scheduled":"Scheduled","library":"Library","settings":"Settings","profile":"Profile","aboutTitle":"About ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"What do you want to create?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"Ask ISAL NOVA anything…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"The interface, buttons, and pages change with the selected language.","privacy":"Privacy & Data","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"Language","theme":"Theme","dark":"Dark","light":"Light","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"Send","save":"Save","cancel":"Cancel","search":"Search","clear":"Clear"},"id":{"home":"Beranda","chat":"Chat","research":"Riset","create":"Buat","agent":"Agen","live":"AI Live","build":"Bangun Bersama","more":"Lainnya","projects":"Proyek","memory":"Memori","skills":"Keahlian","scheduled":"Terjadwal","library":"Pustaka","settings":"Pengaturan","profile":"Profil","aboutTitle":"Tentang ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"MENGINISIALISASI AI CORE","welcome":"Apa yang ingin kamu buat?","homeDesc":"Chat, riset, bangun, buat, dan bekerja bersama partner AI dalam satu tempat.","ask":"Tanya ISAL NOVA apa saja…","chatDesc":"Bernalar, menulis, coding, dan menyelesaikan masalah.","researchDesc":"Jelajahi informasi dan bandingkan sumber.","createDesc":"Ubah ide menjadi gambar, video, dan konten.","agentDesc":"Berikan tujuan dan biarkan ISAL NOVA menyusun rencana.","liveDesc":"Berbicara dan berinteraksi dengan AI secara real-time.","buildDesc":"Kembangkan teknologi bersama langkah demi langkah.","chatGreeting":"Halo! Saya ISAL NOVA. Mau kita kerjakan apa?","chatPlaceholder":"Tulis pesan…","researchPlaceholder":"Apa yang ingin diteliti?","researchWorkspace":"Ruang Kerja Riset","researchBody":"ISAL NOVA dapat mencari, membaca, merangkum, dan membandingkan sumber.","creativeStudio":"Studio Kreatif","imageGeneration":"Pembuatan gambar","videoGeneration":"Pembuatan video","writingStudio":"Studio penulisan","goalPlan":"Tujuan → Rencana → Eksekusi","agentBody":"Berikan tujuan. AI akan memecah pekerjaan menjadi langkah, menjalankan tools, memeriksa hasil, lalu memperbaikinya.","createTask":"Buat tugas","realtimeAI":"AI Real-time","liveBody":"Voice, kamera, vision, dan avatar AI akan terhubung di sini.","startLive":"Mulai AI Live","rndMode":"Mode R&D Teknologi","buildBody":"ISAL NOVA menjadi partner pengembangan: desain → arsitektur → coding → testing → perbaikan → build.","projectContext":"Konteks proyek","codeWorkspace":"Ruang kerja kode","selfCheck":"Pemeriksaan & perbaikan mandiri","yourProjects":"Proyek Kamu","newProject":"+ Proyek Baru","projectMemoryTitle":"Memori Proyek","memoryBody":"Memori menyimpan konteks yang dipilih pengguna untuk membantu AI bekerja lintas sesi.","newSkill":"Buat keahlian baru","scheduledTasks":"Tugas Terjadwal","scheduledBody":"Atur tugas agar dijalankan pada waktu tertentu.","newTask":"+ Tugas Baru","creativeLibrary":"Pustaka Kreatif","libraryBody":"Gambar, video, dan file proyek akan tersimpan di sini.","modelNote":"Pilih profil model AI yang ingin digunakan. Model AI asli akan dihubungkan ke backend.","voiceNote":"Pilih suara. Saat voice engine terhubung, ini menjadi suara AI yang digunakan.","languageNote":"Bahasa antarmuka, tombol, dan halaman berubah mengikuti pilihanmu.","privacy":"Privasi & Data","privacyText":"ISAL NOVA menggunakan prinsip kontrol pengguna: data dan file hanya digunakan untuk fitur yang kamu aktifkan.","user":"Pengguna ISAL NOVA","accountPrefs":"Akun & preferensi","isalIntro":"ISAL adalah singkatan dari","aboutBody":"ISAL adalah sistem AI yang dirancang untuk beradaptasi dengan konteks, kebutuhan pengguna, proyek, workflow, preferensi, dan memori proyek. NOVA adalah identitas platform yang berjalan di atas sistem ISAL.","identity":"Identitas","version":"Versi","backHome":"← Beranda","backMore":"← Lainnya","signInGoogle":"Masuk dengan Google","coding":"Coding","files":"File","vision":"Vision","aiModel":"Model AI","voice":"Voice","language":"Bahasa","theme":"Tema","dark":"Gelap","light":"Terang","darkNote":"Gelap / futuristik","lightNote":"Terang / bersih","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Riwayat chat","projectMemory":"Memori proyek","analytics":"Analitik","on":"Aktif","off":"Nonaktif","soon":"Segera","ready":"Siap","core":"Inti","active":"Aktif","newChat":"Chat baru","send":"Kirim","save":"Simpan","cancel":"Batal","search":"Cari","clear":"Hapus"},"es":{"home":"Inicio","chat":"Chat","research":"Investigación","create":"Crear","agent":"Agente","live":"IA en vivo","build":"Construir conmigo","more":"Más","projects":"Proyectos","memory":"Memoria","skills":"Habilidades","scheduled":"Programado","library":"Biblioteca","settings":"Ajustes","profile":"Perfil","aboutTitle":"Acerca de ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"¿Qué quieres crear?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"Pregunta a ISAL NOVA…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"La interfaz, los botones y las páginas cambian con el idioma seleccionado.","privacy":"Privacidad y datos","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"Idioma","theme":"Tema","dark":"Oscuro","light":"Claro","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"Enviar","save":"Guardar","cancel":"Cancelar","search":"Buscar","clear":"Borrar"},"fr":{"home":"Accueil","chat":"Chat","research":"Recherche","create":"Créer","agent":"Agent","live":"IA en direct","build":"Construire avec moi","more":"Plus","projects":"Projets","memory":"Mémoire","skills":"Compétences","scheduled":"Planifié","library":"Bibliothèque","settings":"Paramètres","profile":"Profil","aboutTitle":"À propos d’ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"Que voulez-vous créer ?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"Demandez à ISAL NOVA…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"L’interface, les boutons et les pages changent selon la langue sélectionnée.","privacy":"Confidentialité et données","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"Langue","theme":"Thème","dark":"Sombre","light":"Clair","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"Envoyer","save":"Enregistrer","cancel":"Annuler","search":"Rechercher","clear":"Effacer"},"de":{"home":"Start","chat":"Chat","research":"Recherche","create":"Erstellen","agent":"Agent","live":"KI Live","build":"Gemeinsam bauen","more":"Mehr","projects":"Projekte","memory":"Speicher","skills":"Fähigkeiten","scheduled":"Geplant","library":"Bibliothek","settings":"Einstellungen","profile":"Profil","aboutTitle":"Über ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"Was möchtest du erstellen?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"Frage ISAL NOVA alles…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"Oberfläche, Schaltflächen und Seiten ändern sich mit der ausgewählten Sprache.","privacy":"Datenschutz & Daten","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"Sprache","theme":"Thema","dark":"Dunkel","light":"Hell","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"Senden","save":"Speichern","cancel":"Abbrechen","search":"Suchen","clear":"Löschen"},"pt":{"home":"Início","chat":"Chat","research":"Pesquisa","create":"Criar","agent":"Agente","live":"IA ao vivo","build":"Construir comigo","more":"Mais","projects":"Projetos","memory":"Memória","skills":"Habilidades","scheduled":"Agendado","library":"Biblioteca","settings":"Configurações","profile":"Perfil","aboutTitle":"Sobre o ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"O que você quer criar?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"Pergunte qualquer coisa ao ISAL NOVA…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"A interface, os botões e as páginas mudam com o idioma selecionado.","privacy":"Privacidade e dados","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"Idioma","theme":"Tema","dark":"Escuro","light":"Claro","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"Enviar","save":"Salvar","cancel":"Cancelar","search":"Pesquisar","clear":"Limpar"},"it":{"home":"Home","chat":"Chat","research":"Ricerca","create":"Crea","agent":"Agente","live":"IA Live","build":"Costruisci con me","more":"Altro","projects":"Progetti","memory":"Memoria","skills":"Competenze","scheduled":"Programmato","library":"Libreria","settings":"Impostazioni","profile":"Profilo","aboutTitle":"Informazioni su ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"Cosa vuoi creare?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"Chiedi qualsiasi cosa a ISAL NOVA…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"Interfaccia, pulsanti e pagine cambiano con la lingua selezionata.","privacy":"Privacy e dati","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"Lingua","theme":"Tema","dark":"Scuro","light":"Chiaro","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"Invia","save":"Salva","cancel":"Annulla","search":"Cerca","clear":"Cancella"},"ja":{"home":"ホーム","chat":"Chat","research":"リサーチ","create":"作成","agent":"エージェント","live":"AI Live","build":"一緒に開発","more":"その他","projects":"プロジェクト","memory":"メモリ","skills":"スキル","scheduled":"予定","library":"ライブラリ","settings":"設定","profile":"プロフィール","aboutTitle":"ISAL NOVAについて","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"何を作りたいですか？","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"ISAL NOVA に何でも聞いてください…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"選択した言語に合わせて、インターフェース、ボタン、ページが変更されます。","privacy":"プライバシーとデータ","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"言語","theme":"テーマ","dark":"ダーク","light":"ライト","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"送信","save":"保存","cancel":"キャンセル","search":"検索","clear":"削除"},"ko":{"home":"홈","chat":"Chat","research":"리서치","create":"만들기","agent":"에이전트","live":"AI Live","build":"함께 만들기","more":"더보기","projects":"프로젝트","memory":"메모리","skills":"스킬","scheduled":"예약됨","library":"라이브러리","settings":"설정","profile":"프로필","aboutTitle":"ISAL NOVA 정보","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"무엇을 만들고 싶나요?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"ISAL NOVA에게 무엇이든 물어보세요…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"선택한 언어에 따라 인터페이스, 버튼, 페이지가 변경됩니다.","privacy":"개인정보 및 데이터","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"언어","theme":"테마","dark":"어둡게","light":"밝게","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"보내기","save":"저장","cancel":"취소","search":"검색","clear":"지우기"},"zh":{"home":"首页","chat":"Chat","research":"研究","create":"创建","agent":"智能代理","live":"AI 实时","build":"与我一起构建","more":"更多","projects":"项目","memory":"记忆","skills":"技能","scheduled":"计划任务","library":"资料库","settings":"设置","profile":"个人资料","aboutTitle":"关于 ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"你想创建什么？","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"向 ISAL NOVA 提问…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"界面、按钮和页面会根据所选语言变化。","privacy":"隐私与数据","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"语言","theme":"主题","dark":"深色","light":"浅色","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"发送","save":"保存","cancel":"取消","search":"搜索","clear":"清除"},"ar":{"home":"الرئيسية","chat":"Chat","research":"البحث","create":"إنشاء","agent":"وكيل","live":"AI مباشر","build":"ابنِ معي","more":"المزيد","projects":"المشاريع","memory":"الذاكرة","skills":"المهارات","scheduled":"المجدول","library":"المكتبة","settings":"الإعدادات","profile":"الملف الشخصي","aboutTitle":"حول ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"ماذا تريد أن تنشئ؟","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"اسأل ISAL NOVA عن أي شيء…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"تتغير الواجهة والأزرار والصفحات حسب اللغة المحددة.","privacy":"الخصوصية والبيانات","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"اللغة","theme":"السمة","dark":"داكن","light":"فاتح","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"إرسال","save":"حفظ","cancel":"إلغاء","search":"بحث","clear":"مسح"},"hi":{"home":"होम","chat":"Chat","research":"रिसर्च","create":"बनाएँ","agent":"एजेंट","live":"AI लाइव","build":"मेरे साथ बनाएँ","more":"और","projects":"प्रोजेक्ट","memory":"मेमोरी","skills":"स्किल्स","scheduled":"शेड्यूल","library":"लाइब्रेरी","settings":"सेटिंग्स","profile":"प्रोफ़ाइल","aboutTitle":"ISAL NOVA के बारे में","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"आप क्या बनाना चाहते हैं?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"ISAL NOVA से कुछ भी पूछें…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"चयनित भाषा के अनुसार इंटरफ़ेस, बटन और पेज बदलते हैं।","privacy":"गोपनीयता और डेटा","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"भाषा","theme":"थीम","dark":"डार्क","light":"लाइट","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"भेजें","save":"सहेजें","cancel":"रद्द करें","search":"खोजें","clear":"साफ़ करें"},"tr":{"home":"Ana Sayfa","chat":"Chat","research":"Araştırma","create":"Oluştur","agent":"Ajan","live":"AI Canlı","build":"Birlikte Geliştir","more":"Daha Fazla","projects":"Projeler","memory":"Bellek","skills":"Yetenekler","scheduled":"Planlanan","library":"Kitaplık","settings":"Ayarlar","profile":"Profil","aboutTitle":"ISAL NOVA Hakkında","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"Ne oluşturmak istiyorsun?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"ISAL NOVA’ya her şeyi sor…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"Arayüz, düğmeler ve sayfalar seçilen dile göre değişir.","privacy":"Gizlilik ve Veriler","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"Dil","theme":"Tema","dark":"Koyu","light":"Açık","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"Gönder","save":"Kaydet","cancel":"İptal","search":"Ara","clear":"Temizle"},"ru":{"home":"Главная","chat":"Chat","research":"Исследование","create":"Создать","agent":"Агент","live":"AI Live","build":"Создаём вместе","more":"Ещё","projects":"Проекты","memory":"Память","skills":"Навыки","scheduled":"Запланировано","library":"Библиотека","settings":"Настройки","profile":"Профиль","aboutTitle":"Об ISAL NOVA","tagline":"Your AI. Your Creation.","initializing":"INITIALIZING AI CORE","welcome":"Что вы хотите создать?","homeDesc":"Chat, research, build, create, and work with an AI partner in one place.","ask":"Спросите ISAL NOVA о чём угодно…","chatDesc":"Reason, write, code, and solve problems.","researchDesc":"Explore information and compare sources.","createDesc":"Turn ideas into images, video, and content.","agentDesc":"Give ISAL NOVA a goal and let it plan.","liveDesc":"Talk and interact with AI in real time.","buildDesc":"Develop technology together step by step.","chatGreeting":"Hello! I am ISAL NOVA. What shall we work on?","chatPlaceholder":"Write a message…","researchPlaceholder":"What do you want to research?","researchWorkspace":"Research Workspace","researchBody":"ISAL NOVA can search, read, summarize, and compare sources.","creativeStudio":"Creative Studio","imageGeneration":"Image generation","videoGeneration":"Video generation","writingStudio":"Writing studio","goalPlan":"Goal → Plan → Execute","agentBody":"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.","createTask":"Create task","realtimeAI":"Real-time AI","liveBody":"Voice, camera, vision, and an AI avatar will connect here.","startLive":"Start AI Live","rndMode":"Technology R&D Mode","buildBody":"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.","projectContext":"Project context","codeWorkspace":"Code workspace","selfCheck":"Self-check & repair","yourProjects":"Your Projects","newProject":"+ New Project","projectMemoryTitle":"Project Memory","memoryBody":"Memory stores the context selected by the user to help AI work across sessions.","newSkill":"Create new skill","scheduledTasks":"Scheduled Tasks","scheduledBody":"Schedule tasks to run at a specific time.","newTask":"+ New Task","creativeLibrary":"Creative Library","libraryBody":"Images, videos, and project files will be stored here.","modelNote":"Choose the AI model profile you want to use. The real AI model will be connected to the backend.","voiceNote":"Choose a voice. When the voice engine is connected, this will be the AI voice used.","languageNote":"Интерфейс, кнопки и страницы меняются в соответствии с выбранным языком.","privacy":"Конфиденциальность и данные","privacyText":"ISAL NOVA follows a user-control approach: data and files are used only for features you enable; AI/API requests are sent through the server configured by the app.","user":"ISAL NOVA User","accountPrefs":"Account & preferences","isalIntro":"ISAL stands for","aboutBody":"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.","identity":"Identity","version":"Version","backHome":"← Home","backMore":"← More","signInGoogle":"Sign in with Google","coding":"Coding","files":"Files","vision":"Vision","aiModel":"AI Model","voice":"Voice","language":"Язык","theme":"Тема","dark":"Тёмная","light":"Светлая","darkNote":"Dark / futuristic","lightNote":"Light / clean","maleAnalytical":"Male · Analytical","maleCreative":"Male · Creative","maleResearch":"Male · Research","femaleAnalytical":"Female · Analytical","femaleCreative":"Female · Creative","femaleResearch":"Female · Research","femaleWarm":"Female · Warm","femaleClear":"Female · Clear","femaleCalm":"Female · Calm","maleDeep":"Male · Deep","maleBright":"Male · Bright","maleNatural":"Male · Natural","chatHistory":"Chat history","projectMemory":"Project memory","analytics":"Analytics","on":"On","off":"Off","soon":"Soon","ready":"Ready","core":"Core","active":"Active","newChat":"New chat","send":"Отправить","save":"Сохранить","cancel":"Отмена","search":"Поиск","clear":"Очистить"}};
+/* =========================================================
+   ISAL NOVA — TRANSLATIONS
+   ========================================================= */
 
-const NOVA_EXTRA={id:{researchToast:'Mesin riset akan kita hubungkan berikutnya.',agentToast:'Mesin agen akan kita bangun setelah AI Core.',liveToast:'AI Live siap sebagai modul berikutnya.',googleToast:'Login Google akan menggunakan OAuth resmi.',projectToast:'Proyek baru dibuat.',schedulerToast:'Scheduler akan dihubungkan ke backend.',chatNext:'Saya menerima pesanmu. AI Core nyata akan kita sambungkan pada tahap berikutnya.'},en:{researchToast:'The research engine will be connected next.',agentToast:'The agent engine will be built after AI Core.',liveToast:'AI Live is ready as the next module.',googleToast:'Google login will use official OAuth.',projectToast:'New project created.',schedulerToast:'The scheduler will be connected to the backend.',chatNext:'I received your message. The real AI Core will be connected in the next stage.'},es:{researchToast:'El motor de investigación se conectará después.',agentToast:'El motor de agentes se construirá después de AI Core.',liveToast:'AI Live está listo como próximo módulo.',googleToast:'El inicio de sesión de Google usará OAuth oficial.',projectToast:'Nuevo proyecto creado.',schedulerToast:'El programador se conectará al backend.',chatNext:'He recibido tu mensaje. El AI Core real se conectará en la siguiente etapa.'},fr:{researchToast:'Le moteur de recherche sera connecté ensuite.',agentToast:'Le moteur d’agents sera construit après AI Core.',liveToast:'AI Live est prêt comme prochain module.',googleToast:'La connexion Google utilisera OAuth officiel.',projectToast:'Nouveau projet créé.',schedulerToast:'Le planificateur sera connecté au backend.',chatNext:'J’ai reçu votre message. Le véritable AI Core sera connecté à l’étape suivante.'},de:{researchToast:'Die Recherche-Engine wird als Nächstes verbunden.',agentToast:'Die Agent-Engine wird nach AI Core aufgebaut.',liveToast:'AI Live ist als nächstes Modul bereit.',googleToast:'Die Google-Anmeldung verwendet offizielles OAuth.',projectToast:'Neues Projekt erstellt.',schedulerToast:'Der Scheduler wird mit dem Backend verbunden.',chatNext:'Ich habe deine Nachricht erhalten. Der echte AI Core wird im nächsten Schritt verbunden.'},pt:{researchToast:'O mecanismo de pesquisa será conectado em seguida.',agentToast:'O mecanismo de agentes será criado após o AI Core.',liveToast:'O AI Live está pronto como próximo módulo.',googleToast:'O login do Google usará OAuth oficial.',projectToast:'Novo projeto criado.',schedulerToast:'O agendador será conectado ao backend.',chatNext:'Recebi sua mensagem. O AI Core real será conectado na próxima etapa.'},it:{researchToast:'Il motore di ricerca sarà collegato successivamente.',agentToast:'Il motore degli agenti sarà costruito dopo AI Core.',liveToast:'AI Live è pronto come prossimo modulo.',googleToast:'L’accesso Google userà OAuth ufficiale.',projectToast:'Nuovo progetto creato.',schedulerToast:'Lo scheduler sarà collegato al backend.',chatNext:'Ho ricevuto il tuo messaggio. Il vero AI Core sarà collegato nella prossima fase.'},ja:{researchToast:'リサーチエンジンは次の段階で接続します。',agentToast:'エージェントエンジンはAI Coreの後に構築します。',liveToast:'AI Liveは次のモジュールとして準備されています。',googleToast:'Googleログインには公式OAuthを使用します。',projectToast:'新しいプロジェクトを作成しました。',schedulerToast:'スケジューラーはバックエンドに接続します。',chatNext:'メッセージを受け取りました。実際のAI Coreは次の段階で接続します。'},ko:{researchToast:'리서치 엔진은 다음 단계에서 연결됩니다.',agentToast:'에이전트 엔진은 AI Core 이후에 구축됩니다.',liveToast:'AI Live는 다음 모듈로 준비되어 있습니다.',googleToast:'Google 로그인은 공식 OAuth를 사용합니다.',projectToast:'새 프로젝트가 생성되었습니다.',schedulerToast:'스케줄러가 백엔드에 연결됩니다.',chatNext:'메시지를 받았습니다. 실제 AI Core는 다음 단계에서 연결됩니다.'},zh:{researchToast:'研究引擎将在下一阶段接入。',agentToast:'智能代理引擎将在 AI Core 之后构建。',liveToast:'AI Live 已准备作为下一模块。',googleToast:'Google 登录将使用官方 OAuth。',projectToast:'已创建新项目。',schedulerToast:'计划任务将连接到后端。',chatNext:'我已收到你的消息。真正的 AI Core 将在下一阶段接入。'},ar:{researchToast:'سيتم ربط محرك البحث في المرحلة التالية.',agentToast:'سيتم بناء محرك الوكلاء بعد AI Core.',liveToast:'AI Live جاهز كوحدة تالية.',googleToast:'سيستخدم تسجيل الدخول إلى Google بروتوكول OAuth الرسمي.',projectToast:'تم إنشاء مشروع جديد.',schedulerToast:'سيتم ربط المجدول بالخلفية.',chatNext:'لقد استلمت رسالتك. سيتم ربط AI Core الحقيقي في المرحلة التالية.'},hi:{researchToast:'रिसर्च इंजन अगले चरण में जोड़ा जाएगा।',agentToast:'एजेंट इंजन AI Core के बाद बनाया जाएगा।',liveToast:'AI Live अगले मॉड्यूल के रूप में तैयार है।',googleToast:'Google लॉगिन आधिकारिक OAuth का उपयोग करेगा।',projectToast:'नया प्रोजेक्ट बनाया गया।',schedulerToast:'शेड्यूलर को बैकएंड से जोड़ा जाएगा।',chatNext:'मुझे आपका संदेश मिल गया। वास्तविक AI Core अगले चरण में जोड़ा जाएगा।'},tr:{researchToast:'Araştırma motoru sonraki aşamada bağlanacak.',agentToast:'Ajan motoru AI Core’dan sonra oluşturulacak.',liveToast:'AI Live sonraki modül olarak hazır.',googleToast:'Google girişi resmi OAuth kullanacak.',projectToast:'Yeni proje oluşturuldu.',schedulerToast:'Zamanlayıcı backend’e bağlanacak.',chatNext:'Mesajınızı aldım. Gerçek AI Core sonraki aşamada bağlanacak.'},ru:{researchToast:'Поисковый модуль будет подключён на следующем этапе.',agentToast:'Модуль агентов будет создан после AI Core.',liveToast:'AI Live готов как следующий модуль.',googleToast:'Вход через Google будет использовать официальный OAuth.',projectToast:'Новый проект создан.',schedulerToast:'Планировщик будет подключён к бэкенду.',chatNext:'Я получил ваше сообщение. Настоящий AI Core будет подключён на следующем этапе.'}};
-const NOVA_BACKEND_TEXT={
-  id:{thinking:'Sedang berpikir…',emptyReply:'AI tidak mengirim jawaban.',backendError:'AI Core belum terhubung atau sedang mengalami masalah.'},
-  en:{thinking:'Thinking…',emptyReply:'The AI returned no answer.',backendError:'AI Core is not connected or is temporarily unavailable.'},
-  es:{thinking:'Pensando…',emptyReply:'La IA no devolvió una respuesta.',backendError:'AI Core no está conectado o no está disponible temporalmente.'},
-  fr:{thinking:'Réflexion…',emptyReply:'L’IA n’a renvoyé aucune réponse.',backendError:'AI Core n’est pas connecté ou est temporairement indisponible.'},
-  de:{thinking:'Denke nach…',emptyReply:'Die KI hat keine Antwort zurückgegeben.',backendError:'AI Core ist nicht verbunden oder vorübergehend nicht verfügbar.'},
-  pt:{thinking:'Pensando…',emptyReply:'A IA não retornou uma resposta.',backendError:'O AI Core não está conectado ou está temporariamente indisponível.'},
-  it:{thinking:'Sto pensando…',emptyReply:'L’IA non ha restituito una risposta.',backendError:'AI Core non è connesso o è temporaneamente non disponibile.'},
-  ja:{thinking:'考えています…',emptyReply:'AIから回答がありませんでした。',backendError:'AI Coreが接続されていないか、一時的に利用できません。'},
-  ko:{thinking:'생각 중…',emptyReply:'AI가 답변을 반환하지 않았습니다.',backendError:'AI Core가 연결되지 않았거나 일시적으로 사용할 수 없습니다.'},
-  zh:{thinking:'思考中…',emptyReply:'AI 没有返回答案。',backendError:'AI Core 尚未连接或暂时不可用。'},
-  ar:{thinking:'جارٍ التفكير…',emptyReply:'لم يُرجع الذكاء الاصطناعي إجابة.',backendError:'AI Core غير متصل أو غير متاح مؤقتًا.'},
-  hi:{thinking:'सोच रहा हूँ…',emptyReply:'AI ने कोई उत्तर नहीं दिया।',backendError:'AI Core कनेक्ट नहीं है या अस्थायी रूप से उपलब्ध नहीं है।'},
-  tr:{thinking:'Düşünüyor…',emptyReply:'Yapay zekâ bir yanıt döndürmedi.',backendError:'AI Core bağlı değil veya geçici olarak kullanılamıyor.'},
-  ru:{thinking:'Думаю…',emptyReply:'ИИ не вернул ответ.',backendError:'AI Core не подключён или временно недоступен.'}
-};
-Object.keys(NOVA_I18N).forEach(k=>Object.assign(NOVA_I18N[k],NOVA_EXTRA[k]||NOVA_EXTRA.en,NOVA_BACKEND_TEXT[k]||NOVA_BACKEND_TEXT.en));
+const NOVA_I18N = {
 
-function novaLocalizedToast(t){const map={'Research engine akan kita hubungkan berikutnya.':'researchToast','Agent engine akan kita bangun setelah AI Core.':'agentToast','AI Live siap sebagai modul berikutnya.':'liveToast','Google login akan menggunakan OAuth resmi.':'googleToast','Project baru dibuat.':'projectToast','Scheduler akan dihubungkan ke backend.':'schedulerToast','Language changed':'language'};return map[t]?novaT(map[t]):t;}
-const _legacyToast=toast; toast=function(t){_legacyToast(novaLocalizedToast(t));};
-const _legacySendChat=sendChat;
-const NOVA_API_BASE=window.NOVA_API_BASE||localStorage.getItem('nova_api_base')||'https://isal-nova-ai.onrender.com';
-let novaChatHistory=[];
-function novaChatHistoryFromUI(){return novaChatHistory.slice(-12);}
-async function novaRealSendChat(){
-  const i=document.getElementById('chatInput'),v=i.value.trim();
-  if(!v)return;
-  const b=document.getElementById('chatbox');
-  b.innerHTML+=`<div class="msg me">${esc(v)}</div>`;
-  i.value='';
-  const loadingId='nova-loading-'+Date.now();
-  b.innerHTML+=`<div class="msg ai" id="${loadingId}">${esc(novaT('thinking'))}</div>`;
-  b.scrollTop=b.scrollHeight;
-  try{
-    const response=await fetch(NOVA_API_BASE.replace(/\/$/,'')+'/api/chat',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({message:v,history:novaChatHistoryFromUI(),language:novaLang()})
-    });
-    const data=await response.json().catch(()=>({}));
-    const el=document.getElementById(loadingId);
-    if(!response.ok)throw new Error(data.error||'request_failed');
-    const reply=String(data.reply||'').trim()||novaT('emptyReply');
-    novaChatHistory.push({role:'user',content:v},{role:'assistant',content:reply});
-    if(el)el.textContent=reply;
-  }catch(error){
-    const el=document.getElementById(loadingId);
-    if(el)el.textContent=novaT('backendError');
-    console.error('ISAL NOVA chat:',error);
+  en: {
+    home:"Home",
+    chat:"Chat",
+    research:"Research",
+    create:"Create",
+    agent:"Agent",
+    live:"AI Live",
+    build:"Build With Me",
+    more:"More",
+    projects:"Projects",
+    memory:"Memory",
+    skills:"Skills",
+    scheduled:"Scheduled",
+    library:"Library",
+    settings:"Settings",
+    profile:"Profile",
+    aboutTitle:"About ISAL NOVA",
+    tagline:"Your AI. Your Creation.",
+    initializing:"INITIALIZING AI CORE",
+    welcome:"What do you want to create?",
+    homeDesc:"Chat, research, build, create, and work with an AI partner in one place.",
+    ask:"Ask ISAL NOVA anything…",
+    chatDesc:"Reason, write, code, and solve problems.",
+    researchDesc:"Explore information and compare sources.",
+    createDesc:"Turn ideas into images, video, and content.",
+    agentDesc:"Give ISAL NOVA a goal and let it plan.",
+    liveDesc:"Talk and interact with AI in real time.",
+    buildDesc:"Develop technology together step by step.",
+    chatGreeting:"Hello! I am ISAL NOVA. What shall we work on?",
+    chatPlaceholder:"Write a message…",
+    researchPlaceholder:"What do you want to research?",
+    researchWorkspace:"Research Workspace",
+    researchBody:"ISAL NOVA can search, read, summarize, and compare sources.",
+    creativeStudio:"Creative Studio",
+    imageGeneration:"Image generation",
+    videoGeneration:"Video generation",
+    writingStudio:"Writing studio",
+    goalPlan:"Goal → Plan → Execute",
+    agentBody:"Give it a goal. AI will break the work into steps, use tools, check the result, and improve it.",
+    createTask:"Create task",
+    realtimeAI:"Real-time AI",
+    liveBody:"Voice, camera, vision, and an AI avatar will connect here.",
+    startLive:"Start AI Live",
+    rndMode:"Technology R&D Mode",
+    buildBody:"ISAL NOVA becomes a development partner: design → architecture → coding → testing → improvement → build.",
+    projectContext:"Project context",
+    codeWorkspace:"Code workspace",
+    selfCheck:"Self-check & repair",
+    yourProjects:"Your Projects",
+    newProject:"+ New Project",
+    projectMemoryTitle:"Project Memory",
+    memoryBody:"Memory stores the context selected by the user to help AI work across sessions.",
+    newSkill:"Create new skill",
+    scheduledTasks:"Scheduled Tasks",
+    scheduledBody:"Schedule tasks to run at a specific time.",
+    newTask:"+ New Task",
+    creativeLibrary:"Creative Library",
+    libraryBody:"Images, videos, and project files will be stored here.",
+    modelNote:"Choose the AI model profile you want to use.",
+    voiceNote:"Choose a voice for ISAL NOVA.",
+    languageNote:"The interface, buttons, and pages change with the selected language.",
+    privacy:"Privacy & Data",
+    privacyText:"ISAL NOVA follows a user-control approach.",
+    user:"ISAL NOVA User",
+    accountPrefs:"Account & preferences",
+    aboutBody:"ISAL is an AI system designed to adapt to context, user needs, projects, workflows, preferences, and project memory. NOVA is the platform identity built on top of ISAL.",
+    identity:"Identity",
+    version:"Version",
+    backHome:"← Home",
+    backMore:"← More",
+    signInGoogle:"Sign in with Google",
+    coding:"Coding",
+    files:"Files",
+    vision:"Vision",
+    aiModel:"AI Model",
+    voice:"Voice",
+    language:"Language",
+    theme:"Theme",
+    dark:"Dark",
+    light:"Light",
+    darkNote:"Dark / futuristic",
+    lightNote:"Light / clean",
+    maleAnalytical:"Male · Analytical",
+    maleCreative:"Male · Creative",
+    maleResearch:"Male · Research",
+    femaleAnalytical:"Female · Analytical",
+    femaleCreative:"Female · Creative",
+    femaleResearch:"Female · Research",
+    femaleWarm:"Female · Warm",
+    femaleClear:"Female · Clear",
+    femaleCalm:"Female · Calm",
+    maleDeep:"Male · Deep",
+    maleBright:"Male · Bright",
+    maleNatural:"Male · Natural",
+    chatHistory:"Chat history",
+    projectMemory:"Project memory",
+    analytics:"Analytics",
+    on:"On",
+    off:"Off",
+    soon:"Soon",
+    ready:"Ready",
+    core:"Core",
+    active:"Active",
+    newChat:"New chat",
+    send:"Send",
+    save:"Save",
+    cancel:"Cancel",
+    search:"Search",
+    clear:"Clear"
+  },
+
+  id: {
+    home:"Beranda",
+    chat:"Chat",
+    research:"Riset",
+    create:"Buat",
+    agent:"Agen",
+    live:"AI Live",
+    build:"Bangun Bersama",
+    more:"Lainnya",
+    projects:"Proyek",
+    memory:"Memori",
+    skills:"Keahlian",
+    scheduled:"Terjadwal",
+    library:"Pustaka",
+    settings:"Pengaturan",
+    profile:"Profil",
+    aboutTitle:"Tentang ISAL NOVA",
+    tagline:"AI Kamu. Kreasi Kamu.",
+    initializing:"MENGINISIALISASI AI CORE",
+    welcome:"Apa yang ingin kamu buat?",
+    homeDesc:"Chat, riset, bangun, buat, dan bekerja bersama partner AI dalam satu tempat.",
+    ask:"Tanya ISAL NOVA apa saja…",
+    chatDesc:"Bernalar, menulis, coding, dan menyelesaikan masalah.",
+    researchDesc:"Jelajahi informasi dan bandingkan sumber.",
+    createDesc:"Ubah ide menjadi gambar, video, dan konten.",
+    agentDesc:"Berikan tujuan dan biarkan ISAL NOVA menyusun rencana.",
+    liveDesc:"Berbicara dan berinteraksi dengan AI secara real-time.",
+    buildDesc:"Kembangkan teknologi bersama langkah demi langkah.",
+    chatGreeting:"Halo! Saya ISAL NOVA. Mau kita kerjakan apa?",
+    chatPlaceholder:"Tulis pesan…",
+    researchPlaceholder:"Apa yang ingin diteliti?",
+    researchWorkspace:"Ruang Kerja Riset",
+    researchBody:"ISAL NOVA dapat mencari, membaca, merangkum, dan membandingkan sumber.",
+    creativeStudio:"Studio Kreatif",
+    imageGeneration:"Pembuatan gambar",
+    videoGeneration:"Pembuatan video",
+    writingStudio:"Studio Penulisan",
+    goalPlan:"Tujuan → Rencana → Eksekusi",
+    agentBody:"Berikan tujuan. AI akan memecah pekerjaan menjadi langkah, menjalankan tools, memeriksa hasil, lalu memperbaikinya.",
+    createTask:"Buat tugas",
+    realtimeAI:"AI Real-time",
+    liveBody:"Voice, kamera, vision, dan avatar AI akan terhubung di sini.",
+    startLive:"Mulai AI Live",
+    rndMode:"Mode R&D Teknologi",
+    buildBody:"ISAL NOVA menjadi partner pengembangan: desain → arsitektur → coding → testing → perbaikan → build.",
+    projectContext:"Konteks proyek",
+    codeWorkspace:"Ruang kerja kode",
+    selfCheck:"Pemeriksaan & perbaikan mandiri",
+    yourProjects:"Proyek Kamu",
+    newProject:"+ Proyek Baru",
+    projectMemoryTitle:"Memori Proyek",
+    memoryBody:"Memori menyimpan konteks yang dipilih pengguna untuk membantu AI bekerja lintas sesi.",
+    newSkill:"Buat keahlian baru",
+    scheduledTasks:"Tugas Terjadwal",
+    scheduledBody:"Atur tugas agar dijalankan pada waktu tertentu.",
+    newTask:"+ Tugas Baru",
+    creativeLibrary:"Pustaka Kreatif",
+    libraryBody:"Gambar, video, dan file proyek akan tersimpan di sini.",
+    modelNote:"Pilih profil model AI yang ingin digunakan.",
+    voiceNote:"Pilih suara untuk ISAL NOVA.",
+    languageNote:"Bahasa antarmuka, tombol, dan halaman berubah mengikuti pilihanmu.",
+    privacy:"Privasi & Data",
+    privacyText:"ISAL NOVA menggunakan prinsip kontrol pengguna.",
+    user:"Pengguna ISAL NOVA",
+    accountPrefs:"Akun & preferensi",
+    aboutBody:"ISAL adalah sistem AI yang dirancang untuk beradaptasi dengan konteks, kebutuhan pengguna, proyek, workflow, preferensi, dan memori proyek. NOVA adalah identitas platform yang berjalan di atas sistem ISAL.",
+    identity:"Identitas",
+    version:"Versi",
+    backHome:"← Beranda",
+    backMore:"← Lainnya",
+    signInGoogle:"Masuk dengan Google",
+    coding:"Coding",
+    files:"File",
+    vision:"Vision",
+    aiModel:"Model AI",
+    voice:"Voice",
+    language:"Bahasa",
+    theme:"Tema",
+    dark:"Gelap",
+    light:"Terang",
+    darkNote:"Gelap / futuristik",
+    lightNote:"Terang / bersih",
+    maleAnalytical:"Pria · Analitis",
+    maleCreative:"Pria · Kreatif",
+    maleResearch:"Pria · Riset",
+    femaleAnalytical:"Wanita · Analitis",
+    femaleCreative:"Wanita · Kreatif",
+    femaleResearch:"Wanita · Riset",
+    femaleWarm:"Wanita · Hangat",
+    femaleClear:"Wanita · Jelas",
+    femaleCalm:"Wanita · Tenang",
+    maleDeep:"Pria · Dalam",
+    maleBright:"Pria · Cerah",
+    maleNatural:"Pria · Natural",
+    chatHistory:"Riwayat chat",
+    projectMemory:"Memori proyek",
+    analytics:"Analitik",
+    on:"Aktif",
+    off:"Nonaktif",
+    soon:"Segera",
+    ready:"Siap",
+    core:"Inti",
+    active:"Aktif",
+    newChat:"Chat baru",
+    send:"Kirim",
+    save:"Simpan",
+    cancel:"Batal",
+    search:"Cari",
+    clear:"Hapus"
   }
-  b.scrollTop=b.scrollHeight;
-}
-sendChat=novaRealSendChat;
-function novaLang(){return localStorage.getItem('isalnova-language')||localStorage.getItem('nova_language')||'id';}
-function novaT(key){const p=NOVA_I18N[novaLang()]||NOVA_I18N.en;return p[key]??NOVA_I18N.en[key]??key;}
-function novaApplyTheme(theme){theme=theme==='light'?'light':'dark';document.documentElement.dataset.theme=theme;document.body.dataset.theme=theme;document.body.classList.toggle('theme-light',theme==='light');document.body.classList.toggle('theme-dark',theme==='dark');localStorage.setItem('isalnova-theme',theme);localStorage.setItem('nova_theme',theme);}
-function novaTranslateAll(){const lang=novaLang();document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=novaT(el.dataset.i18n));document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>el.placeholder=novaT(el.dataset.i18nPlaceholder));const s=document.getElementById('languageSelect');if(s)s.value=lang;}
-function novaSetLanguage(lang){if(!NOVA_I18N[lang])lang='en';localStorage.setItem('isalnova-language',lang);localStorage.setItem('nova_language',lang);novaTranslateAll();}
-function changeLanguage(code){novaSetLanguage(code);toast(novaT('language')+' ✓');}
-function setTheme(theme,btn){novaApplyTheme(theme);document.querySelectorAll('#settings .settingGroup:nth-of-type(4) .optionCard').forEach((x,i)=>x.classList.toggle('active',(theme==='dark'&&i===0)||(theme==='light'&&i===1)));toast(novaT(theme));}
-function selectOption(btn,type){const grid=document.getElementById(type+'Grid');if(grid)grid.querySelectorAll('.optionCard').forEach(x=>x.classList.remove('active'));btn.classList.add('active');localStorage.setItem('isalnova-'+type,btn.querySelector('b').textContent);toast(type==='model'?novaT('aiModel')+' ✓':novaT('voice')+' ✓');}
-function restoreSettings(){novaApplyTheme(localStorage.getItem('isalnova-theme')||localStorage.getItem('nova_theme')||'dark');novaTranslateAll();}
-const novaObserver=new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length))requestAnimationFrame(novaTranslateAll);});
-document.addEventListener('change',e=>{if(e.target.matches('#languageSelect'))novaSetLanguage(e.target.value);});
-document.addEventListener('DOMContentLoaded',()=>{restoreSettings();setTimeout(novaTranslateAll,80);setTimeout(novaTranslateAll,300);novaObserver.observe(document.body,{childList:true,subtree:true});});
+
+};
+
+
+/* =========================================================
+   FINAL LANGUAGE INITIALIZATION
+   ========================================================= */
+
+document.addEventListener(
+  'DOMContentLoaded',
+  () => {
+
+    const language =
+      localStorage.getItem(
+        'novaLanguage'
+      ) || 'id';
+
+    const selector =
+      document.getElementById(
+        'languageSelect'
+      );
+
+    if (selector) {
+      selector.value = language;
+    }
+
+    applyLanguage(language);
+
+
+    const theme =
+      localStorage.getItem(
+        'novaTheme'
+      ) || 'dark';
+
+    document.documentElement
+      .setAttribute(
+        'data-theme',
+        theme
+      );
+
+    document.body
+      .setAttribute(
+        'data-theme',
+        theme
+      );
+  }
+);
 </script>
-</body></html>
