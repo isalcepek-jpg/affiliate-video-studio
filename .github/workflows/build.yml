@@ -39,10 +39,7 @@ jobs:
 
           cp index.html www/index.html
 
-          echo "Mencari logo ISAL NOVA..."
-
-          LOGO=$(find . \
-            -type f \
+          LOGO=$(find . -type f \
             \( -iname "isal-nova-logo.png" \
             -o -iname "*isal*nova*.png" \
             -o -iname "*logo*.png" \) \
@@ -51,16 +48,11 @@ jobs:
 
           if [ -z "$LOGO" ]; then
             echo "ERROR: Logo ISAL NOVA tidak ditemukan."
-            echo "File PNG yang tersedia:"
-            find . -type f -iname "*.png" -not -path "./.git/*" || true
             exit 1
           fi
 
           echo "Logo ditemukan: $LOGO"
           cp "$LOGO" www/isal-nova-logo.png
-
-          echo "Isi www:"
-          ls -lah www
 
       - name: Add Android platform
         run: npx cap add android
@@ -91,41 +83,17 @@ jobs:
               strings.write_text(text)
           PY
 
-      - name: Install ImageMagick
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
-
       - name: Create launcher icons
         shell: bash
         run: |
           set -e
 
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          for dir in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p "android/app/src/main/res/mipmap-$dir"
 
-          magick www/isal-nova-logo.png \
-            -resize 48x48 \
-            android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-
-          magick www/isal-nova-logo.png \
-            -resize 72x72 \
-            android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-
-          magick www/isal-nova-logo.png \
-            -resize 96x96 \
-            android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-
-          magick www/isal-nova-logo.png \
-            -resize 144x144 \
-            android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-
-          magick www/isal-nova-logo.png \
-            -resize 192x192 \
-            android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            cp www/isal-nova-logo.png \
+              "android/app/src/main/res/mipmap-$dir/ic_launcher.png"
+          done
 
       - name: Build APK
         working-directory: android
