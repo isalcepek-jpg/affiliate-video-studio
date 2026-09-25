@@ -1,0 +1,23 @@
+{
+  "name": "isal-nova",
+  "version": "11.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo ISAL NOVA web ready",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "openai": "7.23.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3"
+  }
+}
