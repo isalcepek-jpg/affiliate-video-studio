@@ -8,10 +8,11 @@ on:
 
 jobs:
   build:
+    name: Build ISAL NOVA
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout ISAL NOVA
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -28,23 +29,136 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # ==============================
+      # PREPARE ISAL NOVA WEB ASSETS
+      # ==============================
       - name: Prepare web assets
+        shell: bash
         run: |
+          rm -rf www
           mkdir -p www
+
           cp index.html www/index.html
 
+          if [ -f isal-nova-logo.png ]; then
+            cp isal-nova-logo.png www/isal-nova-logo.png
+          else
+            echo "ERROR: isal-nova-logo.png tidak ditemukan"
+            exit 1
+          fi
+
+      # ==============================
+      # CAPACITOR ANDROID
+      # ==============================
       - name: Add Android platform
         run: npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build debug APK
+      # ==============================
+      # ISAL NOVA APP ID + NAME
+      # ==============================
+      - name: Configure ISAL NOVA Android
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # AndroidManifest
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+
+          if manifest.exists():
+              text = manifest.read_text()
+
+              text = text.replace(
+                  'android:label="@string/app_name"',
+                  'android:label="ISAL NOVA"'
+              )
+
+              text = text.replace(
+                  'android:icon="@mipmap/ic_launcher"',
+                  'android:icon="@mipmap/ic_launcher"'
+              )
+
+              manifest.write_text(text)
+
+          # strings.xml
+          strings = Path(
+              "android/app/src/main/res/values/strings.xml"
+          )
+
+          if strings.exists():
+              text = strings.read_text()
+
+              import re
+
+              text = re.sub(
+                  r'<string name="app_name">.*?</string>',
+                  '<string name="app_name">ISAL NOVA</string>',
+                  text
+              )
+
+              strings.write_text(text)
+          PY
+
+      # ==============================
+      # CREATE ISAL NOVA APP ICON
+      # ==============================
+      - name: Install image tools
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Create ISAL NOVA launcher icons
+        shell: bash
+        run: |
+          mkdir -p android/app/src/main/res/mipmap-mdpi
+          mkdir -p android/app/src/main/res/mipmap-hdpi
+          mkdir -p android/app/src/main/res/mipmap-xhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+
+          convert isal-nova-logo.png \
+            -resize 48x48 \
+            android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+
+          convert isal-nova-logo.png \
+            -resize 72x72 \
+            android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+
+          convert isal-nova-logo.png \
+            -resize 96x96 \
+            android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+
+          convert isal-nova-logo.png \
+            -resize 144x144 \
+            android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+
+          convert isal-nova-logo.png \
+            -resize 192x192 \
+            android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      # ==============================
+      # BUILD APK
+      # ==============================
+      - name: Build ISAL NOVA APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
+      # ==============================
+      # RENAME APK
+      # ==============================
+      - name: Rename APK
+        run: |
+          cp \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            ISAL-NOVA.apk
+
+      # ==============================
+      # UPLOAD APK
+      # ==============================
       - name: Upload ISAL NOVA APK
         uses: actions/upload-artifact@v4
         with:
           name: ISAL-NOVA-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: ISAL-NOVA.apk
+          retention-days: 7
